@@ -1,6 +1,6 @@
 {
   "name": "@pymodel/niblet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Niblet MCP server and design skill: real UI screen references for coding agents",
   "keywords": [
     "mcp",
