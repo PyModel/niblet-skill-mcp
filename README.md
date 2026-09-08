@@ -1,6 +1,13 @@
-![niblet](https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-banner.svg)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-logo-dark.svg">
+    <img alt="Niblet" src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-logo-light.svg" width="300">
+  </picture>
+</p>
 
 <h1 align="center">Niblet MCP</h1>
+
+<p align="center">Real screen references and a design skill, for coding agents that build UI.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="npm" src="https://img.shields.io/npm/v/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=npm&color=e8a33d&labelColor=0f1110"></a>
