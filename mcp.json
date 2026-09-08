@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "niblet": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@pymodel/niblet"
+      ],
+      "env": {
+        "NIBLET_TOKEN": "<your Niblet API token>"
+      }
+    }
+  }
+}

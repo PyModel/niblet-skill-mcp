@@ -1,0 +1,52 @@
+{
+  "name": "@pymodel/niblet",
+  "version": "0.1.0",
+  "description": "Niblet MCP server and design skill: real UI screen references for coding agents",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ui-design",
+    "design-system",
+    "agent-skill",
+    "niblet"
+  ],
+  "homepage": "https://github.com/PyModel/niblet-skill-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PyModel/niblet-skill-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PyModel/niblet-skill-mcp/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Mohamed Elkholy (elkaix) <melkholy@techmatrix.com> (https://github.com/elkaix)",
+  "contributors": [
+    "PyModel (https://github.com/PyModel)"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "bin": {
+    "niblet-mcp": "src/index.mjs"
+  },
+  "files": [
+    "src",
+    "skill",
+    "assets",
+    "mcp.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "3.25.76"
+  }
+}

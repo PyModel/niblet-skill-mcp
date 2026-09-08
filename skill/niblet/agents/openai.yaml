@@ -1,0 +1,8 @@
+interface:
+  display_name: "Niblet"
+  short_description: "Product-grounded interface design for coding agents"
+  default_prompt: "Use Niblet for interface work. Set the design contract first, build from the components already in the codebase, and check the rendered result before calling it done."
+  author: "Mohamed Elkholy (elkaix)"
+  organization: "PyModel"
+  source: "https://github.com/PyModel/niblet-skill-mcp"
+  license: "Apache-2.0"
