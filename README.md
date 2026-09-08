@@ -1,11 +1,19 @@
-<p align="center">
-  <img src="assets/niblet-banner.svg" alt="Niblet" width="100%">
-</p>
+![niblet](https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-banner.svg)
 
 <h1 align="center">Niblet MCP</h1>
 
 <p align="center">
-  <img src="assets/niblet-mascot.svg" alt="" width="96" height="96">
+  <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="npm" src="https://img.shields.io/npm/v/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=npm&color=e8a33d&labelColor=0f1110"></a>
+  <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="Downloads" src="https://img.shields.io/npm/dm/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=downloads&color=30363d&labelColor=0f1110"></a>
+  <a href="https://nodejs.org"><img alt="Node 24.15+" src="https://img.shields.io/badge/node-24.15%2B-30363d?logo=nodedotjs&logoColor=white&labelColor=0f1110"></a>
+  <a href="https://modelcontextprotocol.io"><img alt="MCP" src="https://img.shields.io/badge/mcp-server-30363d?logo=anthropic&logoColor=white&labelColor=0f1110"></a>
+  <a href="https://github.com/PyModel/niblet-skill-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/PyModel/niblet-skill-mcp?logo=github&logoColor=white&label=stars&color=30363d&labelColor=0f1110"></a>
+  <a href="https://github.com/PyModel/niblet-skill-mcp/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-30363d?labelColor=0f1110"></a>
+  <a href="https://hits.sh/github.com/PyModel/niblet-skill-mcp/"><img alt="Visitors" src="https://hits.sh/github.com/PyModel/niblet-skill-mcp.svg?label=visitors&color=30363d&labelColor=0f1110"></a>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot.svg" alt="" width="96" height="96">
 </p>
 
 <p align="center">
@@ -64,7 +72,7 @@ Get a token from [niblet.com/docs](https://niblet.com/docs). Keep it in `.env` o
 
 ## The skill
 
-<img src="assets/niblet-mascot-working.svg" alt="" width="72" height="72" align="right">
+<img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-working.svg" alt="" width="72" height="72" align="right">
 
 Install it straight from the repository:
 
