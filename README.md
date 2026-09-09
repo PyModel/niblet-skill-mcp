@@ -9,7 +9,6 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="npm" src="https://img.shields.io/npm/v/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=npm&color=e8a33d&labelColor=0f1110"></a>
-  <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="Downloads" src="https://img.shields.io/npm/dm/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=downloads&color=30363d&labelColor=0f1110"></a>
   <a href="https://nodejs.org"><img alt="Node 24.15+" src="https://img.shields.io/badge/node-24.15%2B-30363d?logo=nodedotjs&logoColor=white&labelColor=0f1110"></a>
   <a href="https://modelcontextprotocol.io"><img alt="MCP" src="https://img.shields.io/badge/mcp-server-30363d?logo=anthropic&logoColor=white&labelColor=0f1110"></a>
   <a href="https://github.com/PyModel/niblet-skill-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/PyModel/niblet-skill-mcp?logo=github&logoColor=white&label=stars&color=30363d&labelColor=0f1110"></a>
@@ -17,9 +16,18 @@
   <a href="https://hits.sh/github.com/PyModel/niblet-skill-mcp/"><img alt="Visitors" src="https://hits.sh/github.com/PyModel/niblet-skill-mcp.svg?label=visitors&color=30363d&labelColor=0f1110"></a>
 </p>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot.svg" alt="" width="96" height="96">
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="84" height="84"></td>
+    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="84" height="84"></td>
+    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="84" height="84"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Settle the contract</b><br>The screen's job, its real states, and what counts as done.</td>
+    <td align="center"><b>Build from your system</b><br>Your tokens and components first, a reference only when one is still open.</td>
+    <td align="center"><b>Check the rendered screen</b><br>The surface is exercised, so a green build alone is not a pass.</td>
+  </tr>
+</table>
 
 <p align="center">
   By <a href="https://github.com/elkaix">elkaix</a> for <a href="https://github.com/PyModel">PyModel</a>
