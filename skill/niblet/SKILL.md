@@ -3,7 +3,7 @@ name: niblet
 description: Keep interface work anchored to the product it belongs to instead of a generic template. Sets a short design contract, builds from the components and tokens already in the codebase, covers the states a surface can actually reach, and closes by looking at the rendered result. Use when building, reworking, or assessing a web or native interface. Trigger with "niblet", "niblet skill", "niblet designer ui", or "niblet review". Skip backend, CLI, data, and infrastructure work, prose-only tasks, and questions the product's own design system already settles.
 license: Apache-2.0
 metadata:
-  version: "0.1.1"
+  version: "0.2.0"
   author: "Mohamed Elkholy (elkaix)"
   organization: "PyModel"
   source: "https://github.com/PyModel/niblet-skill-mcp"
