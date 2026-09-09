@@ -434,7 +434,7 @@ export function createServer({
     }
     lines.push('', 'Reference documents (read as MCP resources):');
     for (const [slug, doc] of Object.entries(SKILL_DOCS)) lines.push(`  ${uriFor(slug)} — ${doc.title}`);
-    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons). Both need NIBLET_TOKEN; run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
+    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons), get_design_reference (the recorded colors, typography, and components behind a web screen). All three need NIBLET_TOKEN; run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
     lines.push('With no target or command, present this menu and wait for a choice rather than making changes.');
     return textResult(lines.join('\n'));
   });
@@ -465,7 +465,10 @@ export function createServer({
     }));
     const readable = docs.filter(Boolean);
     lines.push(`Documents:    ${readable.length}/${Object.keys(SKILL_DOCS).length} readable (${readable.map(uriFor).join(', ')}).`);
-    lines.push('Tools:        find_ui_references, find_ui_materials, niblet_help, niblet_status.');
+    // Read back what this server actually advertises, so the diagnostic cannot drift
+    // from the registrations the way a hand-written list does.
+    const advertised = Object.keys(server._registeredTools ?? {});
+    lines.push(`Tools:        ${advertised.length ? advertised.join(', ') : 'none registered'}.`);
 
     if (!input.probe) {
       lines.push('', 'API not contacted (probe disabled).');

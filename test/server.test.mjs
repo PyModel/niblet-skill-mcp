@@ -628,3 +628,15 @@ test('get_design_reference rejects an empty argument set and a malformed body', 
   assert.equal(empty.isError, true);
   assertSafeError(await client.callTool({ name: 'get_design_reference', arguments: { packSlug: 'bank' } }));
 });
+
+test('niblet_help and niblet_status name every tool the server registers', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
+  const { tools: listed } = await client.listTools();
+  const help = (await client.callTool({ name: 'niblet_help', arguments: {} })).content[0].text;
+  const status = (await client.callTool({ name: 'niblet_status', arguments: { probe: false } })).content[0].text;
+  for (const { name } of listed) {
+    // niblet_help is the menu, so it names the catalogue tools rather than itself.
+    if (name !== 'niblet_help') assert.ok(help.includes(name), `niblet_help omits ${name}`);
+    assert.ok(status.includes(name), `niblet_status omits ${name}`);
+  }
+});
