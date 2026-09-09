@@ -16,24 +16,25 @@
   <a href="https://hits.sh/github.com/PyModel/niblet-skill-mcp/"><img alt="Visitors" src="https://hits.sh/github.com/PyModel/niblet-skill-mcp.svg?label=visitors&color=30363d&labelColor=0f1110"></a>
 </p>
 
-<table align="center">
-  <tr>
-    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="84" height="84"></td>
-    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="84" height="84"></td>
-    <td align="center" width="200"><img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="84" height="84"></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Settle the contract</b><br>The screen's job, its real states, and what counts as done.</td>
-    <td align="center"><b>Build from your system</b><br>Your tokens and components first, a reference only when one is still open.</td>
-    <td align="center"><b>Check the rendered screen</b><br>The surface is exercised, so a green build alone is not a pass.</td>
-  </tr>
-</table>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="84" height="84">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="84" height="84">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="84" height="84">
+</p>
+
+<p align="center">
+  <b>Settle the contract</b> &nbsp;→&nbsp; <b>Build from your system</b> &nbsp;→&nbsp; <b>Check the rendered screen</b>
+</p>
 
 <p align="center">
   By <a href="https://github.com/elkaix">elkaix</a> for <a href="https://github.com/PyModel">PyModel</a>
 </p>
 
 A coding agent building UI gets two things here: a design skill that keeps it working from your product rather than a generic template, and real screen references from the [Niblet](https://niblet.com) catalogue when a specific visual question is still open.
+
+The skill settles the screen's job, its real states, and what counts as done before writing anything; it builds from the tokens and components already in your codebase; and it finishes by rendering the surface and exercising it, so a green build alone is not a pass.
 
 The skill works alone. The server is optional and needs a token.
 
