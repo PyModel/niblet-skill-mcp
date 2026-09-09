@@ -92,10 +92,13 @@ API check:    OK
 | --- | --- | --- |
 | `find_ui_references` | One concrete unresolved question about a layout, state, or interaction. Returns one to three real screens as inline images. | yes |
 | `find_ui_materials` | A font, icon, or animated icon role your design system does not already cover. Returns the recorded license with each result. | yes |
+| `get_design_reference` | The colours, typography, and components recorded for a web screen you already picked. Pass the `screenId` from a reference, or a pack slug. | yes |
 | `niblet_help` | "What can Niblet do?", or choosing between commands. Lists the four surface modes and every command; pass `command` for one entry. | no |
 | `niblet_status` | Diagnosing the connection before concluding the catalogue is empty. Never prints the token. | no |
 
-The two catalogue tools match the hosted service exactly. `niblet_help` and `niblet_status` are local-only.
+The three catalogue tools match the hosted service exactly. `niblet_help` and `niblet_status` are local-only.
+
+Only web screens carry a design reference, and a web result says so in its own text, so an agent that finds a screen worth borrowing from can read the system behind it in one follow-up call.
 
 ## Resources
 

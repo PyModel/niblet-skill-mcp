@@ -157,7 +157,7 @@ export function createServer({
 
   const server = new McpServer(
     { name: 'niblet', version: pkg.version, websiteUrl: 'https://niblet.com' },
-    { instructions: `Read niblet://skill for the Niblet design workflow; its reference documents are served alongside it (niblet://skill/commands, /connection, /evidence, /native). Call niblet_help to list the surface modes and every design command, or when asked what Niblet can do; call niblet_status to diagnose the connection before concluding the catalogue is empty. ${UNTRUSTED_DATA} The two catalogue tools require NIBLET_TOKEN; the bundled skill, niblet_help, and niblet_status do not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
+    { instructions: `Read niblet://skill for the Niblet design workflow; its reference documents are served alongside it (niblet://skill/commands, /connection, /evidence, /native). Call niblet_help to list the surface modes and every design command, or when asked what Niblet can do; call niblet_status to diagnose the connection before concluding the catalogue is empty. ${UNTRUSTED_DATA} After picking a web reference, call get_design_reference with its screenId for the recorded colors, typography, and components. The catalogue tools require NIBLET_TOKEN; the bundled skill, niblet_help, and niblet_status do not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
   );
 
   function credentialError() {
@@ -296,7 +296,11 @@ export function createServer({
     // The API treats `limit` as advisory, so bound the fan-out here: one image fetch per ref.
     const refs = all.slice(0, input.limit);
 
-    const content = [{ type: 'text', text: [REFERENCE_PREAMBLE, '', ...refs.map(refText)].join('\n') }];
+    // Only web screens belong to a design pack, so only they get the follow-up pointer.
+    const pointer = refs.some((ref) => ref.platform === 'web')
+      ? ['', 'A full style reference is recorded for the web screens above. Call get_design_reference with the screenId to read its colors, typography, and components.']
+      : [];
+    const content = [{ type: 'text', text: [REFERENCE_PREAMBLE, '', ...refs.map(refText), ...pointer].join('\n') }];
     for (const [index, ref] of refs.entries()) {
       const image = await fetchImage(ref.thumbUrl, extra.signal);
       // Keep one block per reference so position still identifies which screen an image belongs to.
@@ -348,6 +352,37 @@ export function createServer({
   }
 
   const localAnnotations = { ...annotations, openWorldHint: false };
+
+  server.registerTool('get_design_reference', {
+    title: 'Get design reference',
+    description: 'Read the recorded style reference for a web screen returned by find_ui_references, or for a design pack by slug: colors with their roles, typography, and component inventory, as markdown. Only web screens have one.',
+    inputSchema: z.object({
+      screenId: screenId.optional().describe('A screen ID from find_ui_references.'),
+      packSlug: z.string().min(1).max(160).optional().describe('A design pack slug, when the pack is already known.'),
+      clientSkillVersion: clientSkillVersion.optional(),
+    }).strict().refine((value) => value.screenId !== undefined || value.packSlug !== undefined, 'Pass screenId or packSlug.'),
+    annotations,
+  }, async (input, extra) => {
+    const credential = credentialError();
+    if (credential) return errorResult(credential);
+
+    const result = await requestJson(['design-reference'], { screenId: input.screenId, slug: input.packSlug }, extra.signal);
+    if (!result.ok) {
+      if (result.status === 404) {
+        return textResult(
+          input.screenId
+            ? 'No style reference is recorded for that screen. Only web screens have one; continue with the local design system.'
+            : 'No design pack with that slug. Continue with the local design system.',
+        );
+      }
+      return errorResult(result.message);
+    }
+    const markdown = result.data?.markdown;
+    if (typeof markdown !== 'string' || markdown.trim() === '') return errorResult('Niblet API returned an invalid response.');
+    const slug = field(result.data.slug ?? '', 160);
+    const source = slug ? `\n\nSource: https://niblet.com/packs/${slug}` : '';
+    return { content: [{ type: 'text', text: `${REFERENCE_PREAMBLE}${source}` }, { type: 'text', text: field(markdown, 40_000) }] };
+  });
 
   server.registerTool('niblet_help', {
     title: 'Niblet help',

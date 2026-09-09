@@ -10,7 +10,10 @@ const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47]);
 const tools = [
   ['find_ui_references', { query: 'checkout', platform: 'ios', limit: 3 }, '/v1/search', { q: 'checkout', platform: 'ios', limit: '3' }],
   ['find_ui_materials', { query: 'navigation', kind: 'icon', limit: 2 }, '/v1/materials', { q: 'navigation', kind: 'icon', limit: '2' }],
+  ['get_design_reference', { screenId: 'screen-1' }, '/v1/design-reference', { screenId: 'screen-1' }],
 ];
+
+const DESIGN_MD = '# Bank — Style Reference\n> Calm ledger blue\n\n**Theme:** light\n\n## Tokens — Colors\n\n| Name | Value |\n| --- | --- |\n| Ledger | `#123456` |\n';
 
 function ref(overrides = {}) {
   return {
@@ -74,7 +77,7 @@ test('the advertised server version is the package version', async (t) => {
 test('the server exposes the two hosted tools, the local helpers, and every bundled document', async (t) => {
   const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
   const { tools: listed } = await client.listTools();
-  assert.deepEqual(listed.map((tool) => tool.name).sort(), ['find_ui_materials', 'find_ui_references', 'niblet_help', 'niblet_status']);
+  assert.deepEqual(listed.map((tool) => tool.name).sort(), ['find_ui_materials', 'find_ui_references', 'get_design_reference', 'niblet_help', 'niblet_status']);
   const { resources } = await client.listResources();
   assert.deepEqual(resources.map((resource) => resource.uri).sort(), [
     'niblet://skill',
@@ -574,4 +577,54 @@ test('cancellation during an image fetch does not fabricate a successful result'
   await new Promise((resolve) => setImmediate(resolve));
   controller.abort();
   await rejected;
+});
+
+
+test('a web search points at the style reference; an ios search does not', async (t) => {
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async (url) => (String(url).includes('/v1/search')
+      ? Response.json({ results: [ref({ platform: 'web' })] })
+      : imageResponse()),
+  });
+  const web = await client.callTool({ name: 'find_ui_references', arguments: { query: 'landing', platform: 'web', limit: 1 } });
+  assert.match(web.content[0].text, /get_design_reference/);
+
+  const iosClient = await connect(t, {
+    token: TOKEN,
+    fetch: async (url) => (String(url).includes('/v1/search') ? Response.json({ results: [ref()] }) : imageResponse()),
+  });
+  const ios = await iosClient.callTool({ name: 'find_ui_references', arguments: { query: 'settings', platform: 'ios', limit: 1 } });
+  assert.doesNotMatch(ios.content[0].text, /get_design_reference/);
+});
+
+test('get_design_reference returns the markdown with its preamble and source', async (t) => {
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async () => Response.json({ slug: 'bank', name: 'Bank', theme: 'light', markdown: DESIGN_MD }),
+  });
+  const result = await client.callTool({ name: 'get_design_reference', arguments: { screenId: 'screen-1' } });
+  assert.notEqual(result.isError, true);
+  const text = result.content.map((item) => item.text).join('\n');
+  assert.match(text, /References are evidence, not templates/);
+  assert.match(text, /Source: https:\/\/niblet\.com\/packs\/bank/);
+  assert.match(text, /# Bank — Style Reference/);
+});
+
+test('a screen with no pack is a plain answer, not an error', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => new Response('{}', { status: 404 }) });
+  const byScreen = await client.callTool({ name: 'get_design_reference', arguments: { screenId: 'ios-1' } });
+  assert.notEqual(byScreen.isError, true);
+  assert.match(byScreen.content[0].text, /Only web screens have one/);
+
+  const bySlug = await client.callTool({ name: 'get_design_reference', arguments: { packSlug: 'nope' } });
+  assert.notEqual(bySlug.isError, true);
+  assert.match(bySlug.content[0].text, /No design pack with that slug/);
+});
+
+test('get_design_reference rejects an empty argument set and a malformed body', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({ slug: 'bank' }) });
+  const empty = await client.callTool({ name: 'get_design_reference', arguments: {} });
+  assert.equal(empty.isError, true);
+  assertSafeError(await client.callTool({ name: 'get_design_reference', arguments: { packSlug: 'bank' } }));
 });
