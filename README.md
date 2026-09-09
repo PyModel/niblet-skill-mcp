@@ -27,7 +27,7 @@
   By <a href="https://github.com/elkaix">elkaix</a> for <a href="https://github.com/PyModel">PyModel</a>
 </p>
 
-Two things for a coding agent building UI: a **design skill** that keeps it working from your product instead of a generic template, and **real screen references** from the [Niblet](https://niblet.com) catalogue when a specific visual question is still open.
+A coding agent building UI gets two things here: a design skill that keeps it working from your product rather than a generic template, and real screen references from the [Niblet](https://niblet.com) catalogue when a specific visual question is still open.
 
 The skill works alone. The server is optional and needs a token.
 
@@ -47,18 +47,18 @@ Then ask for it by name:
 
 > Use Niblet to design the checkout empty and error states.
 
-The [workflow](skill/niblet/SKILL.md) settles the screen's job, primary action, hierarchy, existing tokens, real states, and acceptance criteria before writing anything, then renders the surface and exercises it. A green build is not a pass.
+The [workflow](skill/niblet/SKILL.md) settles the screen's job, primary action, hierarchy, existing tokens, real states, and acceptance criteria before writing anything. It finishes by rendering the surface and exercising it, so a green build on its own does not count as a pass.
 
 ## Connect the server
 
-Pick one. **Hosted**, if your host speaks HTTP MCP:
+Pick one. Hosted, if your host speaks HTTP MCP:
 
 ```sh
 claude mcp add --transport http niblet https://api.niblet.com/mcp \
   --header "Authorization: Bearer $NIBLET_TOKEN"
 ```
 
-**Local over stdio**, via the Claude Code CLI:
+Local over stdio, via the Claude Code CLI:
 
 ```sh
 claude mcp add niblet --env NIBLET_TOKEN=$NIBLET_TOKEN -- npx -y @pymodel/niblet
@@ -80,7 +80,7 @@ Or the equivalent in any host's MCP config file:
 
 Node.js 24.15+; npx fetches the package on first launch. Get a token from [niblet.com/docs](https://niblet.com/docs) and keep it in your host's environment, never in a committed file or a chat message.
 
-**Confirm it worked.** Saving config does not register a server. Call `niblet_status`, which reports the configured origins, whether a usable token is present, and whether the API answers:
+Saving the config does not register the server, so confirm it worked. `niblet_status` reports the configured origins, whether a usable token is present, and whether the API answers:
 
 ```
 Token:        present (44 characters, not shown).
@@ -129,7 +129,7 @@ cp .env.example .env   # then put your token in NIBLET_TOKEN
 npm test
 ```
 
-`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the reported tool list and every `niblet://skill` resource — a resource that registers but never appears in `resources/list` is the failure unit tests cannot catch. For documentation, check that `npm pack --dry-run` still ships what you expect.
+`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the reported tool list and every `niblet://skill` resource. A resource that registers but never appears in `resources/list` is the failure unit tests cannot catch. For documentation, check that `npm pack --dry-run` still ships what you expect.
 
 [AGENTS.md](AGENTS.md) has the working agreement for pointing a coding agent at this repository.
 
