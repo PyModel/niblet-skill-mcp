@@ -65,14 +65,106 @@ function assertSafeError(result) {
   }
 }
 
-test('the server exposes exactly the two hosted tools plus the bundled skill resource', async (t) => {
+test('the server exposes the two hosted tools, the local helpers, and every bundled document', async (t) => {
   const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
   const { tools: listed } = await client.listTools();
-  assert.deepEqual(listed.map((tool) => tool.name).sort(), ['find_ui_materials', 'find_ui_references']);
+  assert.deepEqual(listed.map((tool) => tool.name).sort(), ['find_ui_materials', 'find_ui_references', 'niblet_help', 'niblet_status']);
   const { resources } = await client.listResources();
-  assert.deepEqual(resources.map((resource) => resource.uri), ['niblet://skill']);
+  assert.deepEqual(resources.map((resource) => resource.uri).sort(), [
+    'niblet://skill',
+    'niblet://skill/commands',
+    'niblet://skill/connection',
+    'niblet://skill/evidence',
+    'niblet://skill/native',
+  ]);
   const { contents } = await client.readResource({ uri: 'niblet://skill' });
   assert.match(contents[0].text, /^---\nname: niblet\n/);
+  for (const uri of ['niblet://skill/commands', 'niblet://skill/connection', 'niblet://skill/evidence', 'niblet://skill/native']) {
+    const doc = await client.readResource({ uri });
+    assert.ok(doc.contents[0].text.length > 0, `${uri} must serve content`);
+  }
+});
+
+test('bundled documents link to each other by resource URI, not by unresolvable relative path', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
+  for (const uri of ['niblet://skill', 'niblet://skill/commands', 'niblet://skill/native']) {
+    const { contents } = await client.readResource({ uri });
+    assert.doesNotMatch(contents[0].text, /\]\((?:\.\.\/)?(?:references\/)?[a-z]+\.md\)/,
+      `${uri} still points at a path an MCP client cannot open`);
+  }
+  const { contents } = await client.readResource({ uri: 'niblet://skill' });
+  assert.match(contents[0].text, /\]\(niblet:\/\/skill\/commands\)/);
+});
+
+test('niblet_help lists every command and needs no token', async (t) => {
+  let requests = 0;
+  const client = await connect(t, { token: '', fetch: async () => { requests++; return Response.json({}); } });
+  const result = await client.callTool({ name: 'niblet_help', arguments: {} });
+  const text = result.content.map((item) => item.text).join('\n');
+  assert.equal(requests, 0, 'help must not reach the network');
+  assert.equal(result.isError, undefined);
+  for (const command of ['craft', 'polish', 'critique', 'harden', 'doctor']) {
+    assert.match(text, new RegExp(`\\b${command}\\b`), `help must list ${command}`);
+  }
+  assert.match(text, /Persuade/, 'help must list the surface modes');
+  assert.match(text, /niblet:\/\/skill\/commands/, 'help must point at the full playbook');
+});
+
+test('niblet_help resolves a single command and rejects an unknown one', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
+  const found = await client.callTool({ name: 'niblet_help', arguments: { command: 'polish' } });
+  assert.match(found.content[0].text, /`polish` — remove visible inconsistency/);
+  const missing = await client.callTool({ name: 'niblet_help', arguments: { command: 'nonexistent' } });
+  assert.match(missing.content[0].text, /No Niblet command named/);
+});
+
+test('niblet_status reports a missing token without contacting the API or echoing it', async (t) => {
+  let requests = 0;
+  const client = await connect(t, { token: '', fetch: async () => { requests++; return Response.json({}); } });
+  const result = await client.callTool({ name: 'niblet_status', arguments: {} });
+  assert.equal(requests, 0);
+  assert.match(result.content[0].text, /Token:\s+not configured/);
+});
+
+test('niblet_status never echoes the token and surfaces an unreachable API', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => { throw new Error('connect ECONNREFUSED'); } });
+  const result = await client.callTool({ name: 'niblet_status', arguments: {} });
+  const text = result.content.map((item) => item.text).join('\n');
+  assert.equal(text.includes(TOKEN), false, 'status must not echo the token');
+  assert.match(text, /Token:\s+present \(\d+ characters, not shown\)/);
+  assert.match(text, /API check:\s+FAILED/);
+});
+
+test('niblet_status treats an answered request as reachable, not a failure', async (t) => {
+  // /v1/stats is not part of the hosted contract; a 404 there is a healthy deployment.
+  const client = await connect(t, { token: TOKEN, fetch: async () => new Response('', { status: 404 }) });
+  const notFound = await client.callTool({ name: 'niblet_status', arguments: {} });
+  assert.match(notFound.content[0].text, /API check:\s+reachable/);
+  assert.doesNotMatch(notFound.content[0].text, /FAILED/);
+
+  const rejected = await connect(t, { token: TOKEN, fetch: async () => new Response('', { status: 401 }) });
+  const auth = await rejected.callTool({ name: 'niblet_status', arguments: {} });
+  assert.match(auth.content[0].text, /API check:\s+reachable, but the request was rejected/);
+});
+
+test('the help menu stays in step with the bundled documents', async (t) => {
+  // parseModes/parseCommands read the docs at runtime, so a doc edit that adds a
+  // four-column table or a `### `x` — y` heading would silently grow this menu.
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
+  const text = (await client.callTool({ name: 'niblet_help', arguments: {} })).content.map((i) => i.text).join('\n');
+  const modes = ['Persuade', 'Operate', 'Read', 'Experience'];
+  for (const mode of modes) assert.match(text, new RegExp(`^  ${mode} — `, 'm'), `mode ${mode} must be listed`);
+  const listed = [...text.matchAll(/^ {2}([a-z]+(?: \/ [a-z]+)?) — /gm)].map((m) => m[1]);
+  assert.equal(listed.length, 26, 'expected 26 command lines (pin / unpin share one); a change here means the playbook moved');
+});
+
+test('niblet_status reports catalogue counts when the API answers', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async (url) => {
+    assert.equal(new URL(url).pathname, '/v1/stats');
+    return Response.json({ apps: 1591, screens: 65930, captioned: 15054, journeys: 473 });
+  } });
+  const result = await client.callTool({ name: 'niblet_status', arguments: {} });
+  assert.match(result.content[0].text, /API check:\s+OK — catalogue holds apps 1591, screens 65930/);
 });
 
 test('missing or malformed credentials never reach the API', async (t) => {

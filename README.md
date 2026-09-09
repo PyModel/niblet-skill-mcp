@@ -40,7 +40,10 @@ Two tools, matching the hosted service exactly:
 | `find_ui_references` | One concrete unresolved question about a layout, state, or interaction. Returns one to three real screens as inline images. |
 | `find_ui_materials` | A named font, icon, or animated icon role your design system does not already cover. Returns the recorded license with each result. |
 
-Plus `niblet://skill`, which serves the bundled design workflow and needs no token.
+| `niblet_help` | “What can Niblet do?”, or choosing between commands. Lists the four surface modes and every command with its purpose; pass `command` for one entry. |
+| `niblet_status` | Diagnosing the connection. Reports the configured origins, whether a usable token is present (never the token), which bundled documents are readable, and whether the API actually answers. |
+
+The bundled documents are served as resources and need no token: `niblet://skill` for the workflow, plus `niblet://skill/commands`, `niblet://skill/connection`, `niblet://skill/evidence`, and `niblet://skill/native`. Their cross-links are rewritten to these URIs on the way out, so an agent reading them over MCP can follow every reference.
 
 ## Connect
 
@@ -109,7 +112,7 @@ npm ci --ignore-scripts
 cp .env.example .env   # then put your token in NIBLET_TOKEN
 ```
 
-`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the tool list and `niblet://skill`. For documentation, check that relative links resolve and that `npm pack --dry-run` still ships what you expect.
+`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the tool list and every `niblet://skill` resource — a resource that registers but never appears in `resources/list` is the failure the unit tests cannot catch. For documentation, check that relative links resolve and that `npm pack --dry-run` still ships what you expect.
 
 [AGENTS.md](AGENTS.md) has the details if you are pointing a coding agent at this repository.
 

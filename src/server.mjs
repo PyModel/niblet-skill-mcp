@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { SKILL_DOCS, parseCommands, parseModes, readSkillDoc, uriFor } from './skill.mjs';
 
 const DEFAULT_API_ORIGIN = 'https://api.niblet.com';
 const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
@@ -153,7 +153,7 @@ export function createServer({
 
   const server = new McpServer(
     { name: 'niblet', version: '1.0.0', websiteUrl: 'https://niblet.com' },
-    { instructions: `Read niblet://skill for the Niblet design workflow. ${UNTRUSTED_DATA} Both tools require NIBLET_TOKEN; the bundled skill does not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
+    { instructions: `Read niblet://skill for the Niblet design workflow; its reference documents are served alongside it (niblet://skill/commands, /connection, /evidence, /native). Call niblet_help to list the surface modes and every design command, or when asked what Niblet can do; call niblet_status to diagnose the connection before concluding the catalogue is empty. ${UNTRUSTED_DATA} The two catalogue tools require NIBLET_TOKEN; the bundled skill, niblet_help, and niblet_status do not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
   );
 
   function credentialError() {
@@ -328,17 +328,137 @@ export function createServer({
     return textResult([MATERIAL_PREAMBLE, '', ...materials.map(materialText)].join('\n'));
   });
 
-  server.registerResource('niblet-skill', 'niblet://skill', {
-    title: 'Niblet design skill',
-    description: 'The bundled Niblet design workflow. Available without an API token.',
-    mimeType: 'text/markdown',
-  }, async (uri) => {
-    try {
-      const text = await readFile(new URL('../skill/niblet/SKILL.md', import.meta.url), 'utf8');
+  // Every bundled document is served, not just SKILL.md: SKILL.md directs the agent
+  // to the command playbook, the evidence policy, and the native guidance, and over
+  // stdio those relative paths are unresolvable unless each one is also a resource.
+  for (const [slug, { title, description }] of Object.entries(SKILL_DOCS)) {
+    server.registerResource(slug === 'skill' ? 'niblet-skill' : `niblet-skill-${slug}`, uriFor(slug), {
+      title,
+      description,
+      mimeType: 'text/markdown',
+    }, async (uri) => {
+      const text = await readSkillDoc(slug);
+      if (text === null) throw new McpError(ErrorCode.InternalError, 'The bundled Niblet skill could not be read. Reinstall the package.');
       return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
+    });
+  }
+
+  const localAnnotations = { ...annotations, openWorldHint: false };
+
+  server.registerTool('niblet_help', {
+    title: 'Niblet help',
+    description: 'List everything Niblet offers: the surface modes, every design command with its purpose, and the reference documents available as resources. Use when asked what Niblet can do, which command fits, or to present the choice menu before making changes.',
+    inputSchema: z.object({
+      command: z.string().min(1).max(64).optional().describe('A command name, to locate its section and full playbook entry.'),
+    }).strict(),
+    annotations: localAnnotations,
+  }, async (input) => {
+    let skillDoc;
+    let commandsDoc;
+    try {
+      [skillDoc, commandsDoc] = await Promise.all([readSkillDoc('skill'), readSkillDoc('commands')]);
     } catch {
-      throw new McpError(ErrorCode.InternalError, 'The bundled Niblet skill could not be read. Reinstall the package.');
+      return errorResult('The bundled Niblet documents could not be read. Reinstall the package.');
     }
+    const sections = parseCommands(commandsDoc ?? '');
+    const all = sections.flatMap((s) => s.commands.map((c) => ({ ...c, section: s.section })));
+
+    if (input.command) {
+      const wanted = input.command.trim().toLowerCase().replace(/^\//, '');
+      const match = all.find((c) => c.names.some((n) => n.toLowerCase() === wanted));
+      if (!match) {
+        return textResult([
+          `No Niblet command named "${input.command}".`,
+          `Available: ${all.flatMap((c) => c.names).join(', ')}.`,
+          `Full playbook: ${uriFor('commands')}`,
+        ].join('\n'));
+      }
+      return textResult([
+        `${match.names.map((n) => `\`${n}\``).join(' / ')} — ${match.purpose}`,
+        `Section: ${match.section}.`,
+        '',
+        `Read ${uriFor('commands')} for the full entry, and ${uriFor('skill')} for the design contract and finish gate every implementation command applies.`,
+      ].join('\n'));
+    }
+
+    // A compact index rather than the whole playbook: SKILL.md's routing rule asks for
+    // a short menu and a choice, not a wall of text.
+    const modes = parseModes(skillDoc ?? '');
+    const lines = ['Niblet keeps interface work anchored to the product it belongs to. Pick a mode and a command, then work under a design contract.'];
+    if (modes.length) {
+      lines.push('', 'Surface modes — choose by the job of the surface:');
+      for (const m of modes) lines.push(`  ${m.mode} — ${m.job} (${m.surfaces})`);
+    }
+    for (const section of sections) {
+      lines.push('', `${section.section}:`);
+      for (const c of section.commands) lines.push(`  ${c.names.join(' / ')} — ${c.purpose}`);
+    }
+    lines.push('', 'Reference documents (read as MCP resources):');
+    for (const [slug, doc] of Object.entries(SKILL_DOCS)) lines.push(`  ${uriFor(slug)} — ${doc.title}`);
+    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons). Both need NIBLET_TOKEN; run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
+    lines.push('With no target or command, present this menu and wait for a choice rather than making changes.');
+    return textResult(lines.join('\n'));
+  });
+
+  server.registerTool('niblet_status', {
+    title: 'Niblet status',
+    description: 'Diagnose this Niblet connection: configured origins, whether a usable token is present, the bundled documents, and whether the catalogue API actually answers. Use before concluding that the catalogue is empty or broken.',
+    inputSchema: z.object({
+      probe: z.boolean().default(true).describe('Contact the configured API to confirm it answers. Set false to report configuration only.'),
+    }).strict(),
+    // The probe is the reported result, so this one does reach the configured origin.
+    annotations,
+  }, async (input, extra) => {
+    const lines = ['Niblet MCP status.', '', `API origin:   ${API_ORIGIN}`, `Media origins: ${[...MEDIA_ORIGINS].join(', ')}`];
+
+    // Presence and shape only — the playbook's doctor entry requires never displaying it.
+    const credential = credentialError();
+    if (typeof token !== 'string' || token.trim() === '') lines.push('Token:        not configured. Set NIBLET_TOKEN in the MCP server environment.');
+    else if (credential) lines.push('Token:        present but malformed for a bearer credential. Check NIBLET_TOKEN.');
+    else lines.push(`Token:        present (${token.trim().length} characters, not shown).`);
+
+    const docs = await Promise.all(Object.keys(SKILL_DOCS).map(async (slug) => {
+      try {
+        return (await readSkillDoc(slug)) ? slug : null;
+      } catch {
+        return null;
+      }
+    }));
+    const readable = docs.filter(Boolean);
+    lines.push(`Documents:    ${readable.length}/${Object.keys(SKILL_DOCS).length} readable (${readable.map(uriFor).join(', ')}).`);
+    lines.push('Tools:        find_ui_references, find_ui_materials, niblet_help, niblet_status.');
+
+    if (!input.probe) {
+      lines.push('', 'API not contacted (probe disabled).');
+      return textResult(lines.join('\n'));
+    }
+    if (credential) {
+      lines.push('', 'API not contacted: no usable token. The bundled documents and niblet_help remain available without one.');
+      return textResult(lines.join('\n'));
+    }
+
+    const result = await requestJson(['stats'], {}, extra.signal);
+    if (!result.ok) {
+      // Any HTTP status means the origin answered, which is what reachability asks.
+      // /v1/stats is not part of the hosted contract, so a 404 is a normal answer
+      // from a healthy deployment, not a failure.
+      if (result.status === 404) {
+        lines.push('', 'API check:    reachable — the configured origin answered. It does not serve catalogue counts; use find_ui_references to confirm the catalogue itself.');
+        return textResult(lines.join('\n'));
+      }
+      if (result.status !== undefined) {
+        lines.push('', `API check:    reachable, but the request was rejected — ${result.message}`);
+        return textResult(lines.join('\n'));
+      }
+      lines.push('', `API check:    FAILED — ${result.message}`);
+      lines.push(`Check that the configured origin is correct and that the service is actually running, then read the connection guide at ${uriFor('connection')}.`);
+      return textResult(lines.join('\n'));
+    }
+    const counts = ['apps', 'screens', 'captioned', 'journeys']
+      .map((key) => (typeof result.data[key] === 'number' ? `${key} ${result.data[key]}` : null))
+      .filter(Boolean);
+    lines.push('', `API check:    OK${counts.length ? ` — catalogue holds ${counts.join(', ')}.` : '.'}`);
+    return textResult(lines.join('\n'));
   });
 
   return server;
