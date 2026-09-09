@@ -50,12 +50,15 @@ Tool arguments use **`query`**, not `q`. The adapter translates `query` to the R
 | --- | --- | --- | --- |
 | `find_ui_references` | `query`: string, 1–240 characters | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedIds`: one to three screen IDs, each 1–160 characters; `clientSkillVersion`: string, 1–64 characters | Reference lines with app, screen type, platform, pixel size, ID, summary, and inspect URL, plus one inline image per reference |
 | `find_ui_materials` | `query`: string, 1–240 characters; `kind`: `font`, `icon`, `animated_icon`, or `pack` | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedId`: string, 1–160 characters; `userConfirmed`: `true`; `clientSkillVersion`: string, 1–64 characters | Numbered materials with name, recorded license, description, and URL |
+| `get_design_reference` | one of `screenId` (from a reference) or `packSlug` | `clientSkillVersion`: string, 1–64 characters | The pack's style reference as markdown: colours with their roles, typography, and component inventory |
 
 Without `selectedIds`, `find_ui_references` searches and attaches thumbnail images. With `selectedIds`, it reads those exact screens and attaches inspection-quality images; an ID the catalogue does not hold is skipped rather than failing the call. `query` is required in both cases.
 
 `kind: "pack"` returns a plain refusal before any request: this deployment supplies no packs. `selectedId`, `userConfirmed`, and `clientSkillVersion` are accepted compatibility fields; they do not establish asset installation, pack access, or extra automation.
 
 Screen IDs are nonempty strings up to 160 characters. They reject dot segments, slash, backslash, percent characters, control characters, and malformed Unicode. Use IDs returned by a previous search rather than deriving them from display names. The client URL-encodes accepted identifiers.
+
+Only web screens belong to a design pack. A web search says so in its own text; call `get_design_reference` with that screen's ID to read the system behind it. An iOS screen returns a plain "Only web screens have one" rather than an error, so treat a missing reference as an answer and continue from the local design system.
 
 Empty results are ordinary text, not failures: `find_ui_references` returns "No relevant references. Continue with the product brief and existing design system." and `find_ui_materials` returns "No <kind> materials matched." Continue from local evidence in both cases.
 
@@ -95,6 +98,7 @@ This existing remote service exposes **only**:
 
 - `find_ui_references`
 - `find_ui_materials`
+- `get_design_reference`
 
 Its schemas match the local adapter. Both require `query` (1–240 characters), accept `limit` from 1–3 with default 2, and accept optional `platform` (`ios` or `web`). Materials also require `kind` (`font`, `icon`, `animated_icon`, or `pack`); neither deployment supplies packs.
 
