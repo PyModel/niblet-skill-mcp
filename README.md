@@ -85,7 +85,7 @@ Or the equivalent in any host's MCP config file:
 }
 ```
 
-Node.js 24.15+; npx fetches the package on first launch. Get a token from [niblet.com/docs](https://niblet.com/docs) and keep it in your host's environment, never in a committed file or a chat message.
+Node.js 24.15+; npx fetches the package on first launch. Create an account at [niblet.com/sign-up](https://www.niblet.com/sign-up), confirm the emailed code, then create a key at [niblet.com/account](https://www.niblet.com/account). It is shown once. Keep it in your host's environment, never in a committed file or a chat message.
 
 Saving the config does not register the server, so confirm it worked. `niblet_status` reports the configured origins, whether a usable token is present, and whether the API answers:
 

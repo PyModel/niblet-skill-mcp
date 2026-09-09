@@ -8,7 +8,7 @@ The skill can work from the repository, product brief, and supplied screenshots 
 
 ## Local stdio MCP package
 
-Prerequisites: Node.js **24.15 or later**, this package with its dependencies installed, and a Niblet API token for catalogue tool calls. The client launches the process locally and communicates over stdio; it is not a local HTTP service.
+Prerequisites: Node.js **24.15 or later**, this package with its dependencies installed, and a Niblet API key (`niblet_at_…`, created at `https://www.niblet.com/account`) for catalogue tool calls. The client launches the process locally and communicates over stdio; it is not a local HTTP service.
 
 From the package root, run `npm ci --ignore-scripts` to install the locked dependencies. Then configure the MCP host below; it launches the server itself. To run manually with an environment file, use `node --env-file=/absolute/path/to/private.env src/index.mjs`. Plain `npm start` inherits the process environment and does not automatically load `.env`.
 
@@ -34,7 +34,7 @@ For a host using the common `mcpServers` JSON configuration shape:
 }
 ```
 
-Replace the absolute path and token placeholder locally. Adapt the shape to the host's documented configuration if it differs. Prefer a host-managed secret/environment facility where supported; keep tokens out of repository commits, screenshots, queries, and chat. A token is a prerequisite, not something this package creates. Do not claim an account/signup or token-issuance flow that has not been established.
+Replace the absolute path and token placeholder locally. Adapt the shape to the host's documented configuration if it differs. Prefer a host-managed secret/environment facility where supported; keep tokens out of repository commits, screenshots, queries, and chat. A token is a prerequisite, not something this package creates: the person creates one for themselves at `https://www.niblet.com/sign-up`, confirms the six-digit code emailed to them, and then creates keys at `https://www.niblet.com/account`. The key's plaintext is shown once, at creation, and can be revoked from the same page.
 
 The bundled `mcp.json` is a template: replace both `/absolute/path/to/niblet-skill-mcp/...` placeholders with the real checkout path. It loads an optional `.env` beside the package, so copy `.env.example` to `.env` and supply the token privately, or set `NIBLET_TOKEN` in the host environment. Plain `npm start` still only inherits its environment.
 
