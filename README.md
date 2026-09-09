@@ -5,8 +5,6 @@
   </picture>
 </p>
 
-<h1 align="center">Niblet MCP</h1>
-
 <p align="center">Real screen references and a design skill, for coding agents that build UI.</p>
 
 <p align="center">
