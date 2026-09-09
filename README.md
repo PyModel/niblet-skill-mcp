@@ -11,21 +11,20 @@
   <a href="https://www.npmjs.com/package/@pymodel/niblet"><img alt="npm" src="https://img.shields.io/npm/v/%40pymodel%2Fniblet?logo=npm&logoColor=white&label=npm&color=e8a33d&labelColor=0f1110"></a>
   <a href="https://nodejs.org"><img alt="Node 24.15+" src="https://img.shields.io/badge/node-24.15%2B-30363d?logo=nodedotjs&logoColor=white&labelColor=0f1110"></a>
   <a href="https://modelcontextprotocol.io"><img alt="MCP" src="https://img.shields.io/badge/mcp-server-30363d?logo=anthropic&logoColor=white&labelColor=0f1110"></a>
-  <a href="https://github.com/PyModel/niblet-skill-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/PyModel/niblet-skill-mcp?logo=github&logoColor=white&label=stars&color=30363d&labelColor=0f1110"></a>
+  <a href="https://github.com/PyModel/niblet-skill-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/PyModel/niblet-skill-mcp?style=flat&logo=github&logoColor=white&label=stars&color=30363d&labelColor=0f1110"></a>
   <a href="https://github.com/PyModel/niblet-skill-mcp/blob/main/LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-30363d?labelColor=0f1110"></a>
   <a href="https://hits.sh/github.com/PyModel/niblet-skill-mcp/"><img alt="Visitors" src="https://hits.sh/github.com/PyModel/niblet-skill-mcp.svg?label=visitors&color=30363d&labelColor=0f1110"></a>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="84" height="84">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="84" height="84">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="84" height="84">
-</p>
-
-<p align="center">
-  <b>Settle the contract</b> &nbsp;→&nbsp; <b>Build from your system</b> &nbsp;→&nbsp; <b>Check the rendered screen</b>
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="56" height="56" align="middle">
+  &nbsp;<b>Settle the contract</b>
+  &nbsp;&nbsp;→&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="56" height="56" align="middle">
+  &nbsp;<b>Build from your system</b>
+  &nbsp;&nbsp;→&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="56" height="56" align="middle">
+  &nbsp;<b>Check the rendered screen</b>
 </p>
 
 <p align="center">
