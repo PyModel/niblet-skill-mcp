@@ -27,34 +27,44 @@
   By <a href="https://github.com/elkaix">elkaix</a> for <a href="https://github.com/PyModel">PyModel</a>
 </p>
 
-An MCP server that gives a coding agent two things while it builds UI: real screen references from the [Niblet](https://niblet.com) catalogue, and a design skill that keeps the agent working from your product instead of a generic template.
+Two things for a coding agent building UI: a **design skill** that keeps it working from your product instead of a generic template, and **real screen references** from the [Niblet](https://niblet.com) catalogue when a specific visual question is still open.
 
-The skill works on its own. The MCP server is optional, and needs a token.
+The skill works alone. The server is optional and needs a token.
 
-## What you get
+## Install the skill
 
-Two tools, matching the hosted service exactly:
+```sh
+npx skills add PyModel/niblet-skill-mcp --skill niblet -y
+```
 
-| Tool | Use it for |
-| --- | --- |
-| `find_ui_references` | One concrete unresolved question about a layout, state, or interaction. Returns one to three real screens as inline images. |
-| `find_ui_materials` | A named font, icon, or animated icon role your design system does not already cover. Returns the recorded license with each result. |
+Or copy it yourself, keeping `references/`, `agents/`, `LICENSE`, and `NOTICE` alongside it:
 
-| `niblet_help` | “What can Niblet do?”, or choosing between commands. Lists the four surface modes and every command with its purpose; pass `command` for one entry. |
-| `niblet_status` | Diagnosing the connection. Reports the configured origins, whether a usable token is present (never the token), which bundled documents are readable, and whether the API actually answers. |
+```sh
+cp -r skill/niblet ~/.claude/skills/niblet
+```
 
-The bundled documents are served as resources and need no token: `niblet://skill` for the workflow, plus `niblet://skill/commands`, `niblet://skill/connection`, `niblet://skill/evidence`, and `niblet://skill/native`. Their cross-links are rewritten to these URIs on the way out, so an agent reading them over MCP can follow every reference.
+Then ask for it by name:
 
-## Connect
+> Use Niblet to design the checkout empty and error states.
 
-You do not have to run this server. If your host speaks HTTP MCP, point it at the hosted endpoint and skip to [the skill](#the-skill):
+The [workflow](skill/niblet/SKILL.md) settles the screen's job, primary action, hierarchy, existing tokens, real states, and acceptance criteria before writing anything, then renders the surface and exercises it. A green build is not a pass.
+
+## Connect the server
+
+Pick one. **Hosted**, if your host speaks HTTP MCP:
 
 ```sh
 claude mcp add --transport http niblet https://api.niblet.com/mcp \
   --header "Authorization: Bearer $NIBLET_TOKEN"
 ```
 
-To run it locally over stdio instead, add this to your host's MCP config. Node.js 24.15 or later is required; npx fetches the package on first launch.
+**Local over stdio**, via the Claude Code CLI:
+
+```sh
+claude mcp add niblet --env NIBLET_TOKEN=$NIBLET_TOKEN -- npx -y @pymodel/niblet
+```
+
+Or the equivalent in any host's MCP config file:
 
 ```json
 {
@@ -68,40 +78,46 @@ To run it locally over stdio instead, add this to your host's MCP config. Node.j
 }
 ```
 
-Or with the Claude Code CLI:
+Node.js 24.15+; npx fetches the package on first launch. Get a token from [niblet.com/docs](https://niblet.com/docs) and keep it in your host's environment, never in a committed file or a chat message.
 
-```sh
-claude mcp add niblet --env NIBLET_TOKEN=$NIBLET_TOKEN -- npx -y @pymodel/niblet
+**Confirm it worked.** Saving config does not register a server. Call `niblet_status`, which reports the configured origins, whether a usable token is present, and whether the API answers:
+
+```
+Token:        present (44 characters, not shown).
+Documents:    5/5 readable (niblet://skill, …).
+API check:    OK
 ```
 
-Saving the config does not register the server — check the tool list your host actually reports.
+## Tools
 
-Get a token from [niblet.com/docs](https://niblet.com/docs). Keep it in `.env` or your host's environment; never in a committed file or a chat message.
+| Tool | Use it for | Token |
+| --- | --- | --- |
+| `find_ui_references` | One concrete unresolved question about a layout, state, or interaction. Returns one to three real screens as inline images. | yes |
+| `find_ui_materials` | A font, icon, or animated icon role your design system does not already cover. Returns the recorded license with each result. | yes |
+| `niblet_help` | "What can Niblet do?", or choosing between commands. Lists the four surface modes and every command; pass `command` for one entry. | no |
+| `niblet_status` | Diagnosing the connection before concluding the catalogue is empty. Never prints the token. | no |
 
-`NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` retarget the server at a local deployment. Leave them unset for production.
+The two catalogue tools match the hosted service exactly. `niblet_help` and `niblet_status` are local-only.
 
-## The skill
+## Resources
 
-<img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-working.svg" alt="" width="72" height="72" align="right">
+The bundled documents, served without a token. Cross-links between them are rewritten to these URIs, so an agent reading one can follow every reference.
 
-Install it straight from the repository:
+| URI | Contents |
+| --- | --- |
+| `niblet://skill` | The design workflow: modes, contract, state coverage, finish gate |
+| `niblet://skill/commands` | Every command, its scope, and what completion means |
+| `niblet://skill/connection` | Installing, invoking, and diagnosing the tools |
+| `niblet://skill/evidence` | When to pull an external reference, and how to use one |
+| `niblet://skill/native` | Platform constraints and the native finish gate |
 
-```sh
-npx skills add PyModel/niblet-skill-mcp --skill niblet -y
-```
+## Configuration
 
-Or copy [skill/niblet](skill/niblet) into your host's skill directory yourself, keeping `references/`, `agents/`, `LICENSE`, and `NOTICE` alongside it:
-
-```sh
-cp -r skill/niblet ~/.claude/skills/niblet
-```
-
-Then ask for it by name:
-
-> Use Niblet to design the checkout empty and error states.
-> Run a niblet-skill review of the settings screen.
-
-The [workflow](skill/niblet/SKILL.md) makes the agent establish the screen's job, primary action, hierarchy, existing tokens, real states, and acceptance criteria before it writes anything. It pulls references only when a specific question is still open, and it finishes by rendering the surface and exercising it. A green build is not a pass.
+| Variable | Purpose |
+| --- | --- |
+| `NIBLET_TOKEN` | Required by the two catalogue tools. |
+| `NIBLET_API_ORIGIN` | Retarget at a local deployment. Unset for production. |
+| `NIBLET_MEDIA_ORIGIN` | Same, for images. Unset for production. |
 
 ## Contributing
 
@@ -110,11 +126,12 @@ git clone https://github.com/PyModel/niblet-skill-mcp
 cd niblet-skill-mcp
 npm ci --ignore-scripts
 cp .env.example .env   # then put your token in NIBLET_TOKEN
+npm test
 ```
 
-`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the tool list and every `niblet://skill` resource — a resource that registers but never appears in `resources/list` is the failure the unit tests cannot catch. For documentation, check that relative links resolve and that `npm pack --dry-run` still ships what you expect.
+`npm test` covers the tool contract and its failure boundaries. For anything touching startup or configuration, also connect a real MCP client and confirm the reported tool list and every `niblet://skill` resource — a resource that registers but never appears in `resources/list` is the failure unit tests cannot catch. For documentation, check that `npm pack --dry-run` still ships what you expect.
 
-[AGENTS.md](AGENTS.md) has the details if you are pointing a coding agent at this repository.
+[AGENTS.md](AGENTS.md) has the working agreement for pointing a coding agent at this repository.
 
 ## License
 
