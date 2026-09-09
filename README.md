@@ -17,15 +17,11 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-thinking.svg" alt="" width="76" height="76">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-focused.svg" alt="" width="76" height="76">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-mascot-celebration.svg" alt="" width="76" height="76">
-</p>
-
-<p align="center">
-  <b>Settle the contract</b> &nbsp;→&nbsp; <b>Build from your system</b> &nbsp;→&nbsp; <b>Check the rendered screen</b>
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-step-contract.svg" alt="Settle the contract" width="210">
+  <b>→</b>
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-step-build.svg" alt="Build from your system" width="210">
+  <b>→</b>
+  <img src="https://raw.githubusercontent.com/PyModel/niblet-skill-mcp/main/assets/niblet-step-check.svg" alt="Check the rendered screen" width="210">
 </p>
 
 <p align="center">
