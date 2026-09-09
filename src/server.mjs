@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { SKILL_DOCS, parseCommands, parseModes, readSkillDoc, uriFor } from './skill.mjs';
+// The advertised server version is the package version; nothing else to keep in step.
+import pkg from '../package.json' with { type: 'json' };
 
 const DEFAULT_API_ORIGIN = 'https://api.niblet.com';
 const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
@@ -138,7 +140,9 @@ function listOf(data, key) {
 }
 
 /**
- * Create a local stdio server exposing the same two tools as the hosted Niblet MCP service.
+ * Create a local stdio server. It exposes the hosted service's two catalogue tools with
+ * identical contracts, plus local-only helpers that read bundled files and need no token:
+ * niblet_help, niblet_status, and every skill document as a resource.
  * Token, origins, and fetch injection are for embedding and tests; they never widen the
  * destination allowlist beyond the configured API and media origins.
  */
@@ -152,7 +156,7 @@ export function createServer({
   const MEDIA_ORIGINS = new Set([originOf(mediaOrigin, DEFAULT_MEDIA_ORIGIN), API_ORIGIN]);
 
   const server = new McpServer(
-    { name: 'niblet', version: '1.0.0', websiteUrl: 'https://niblet.com' },
+    { name: 'niblet', version: pkg.version, websiteUrl: 'https://niblet.com' },
     { instructions: `Read niblet://skill for the Niblet design workflow; its reference documents are served alongside it (niblet://skill/commands, /connection, /evidence, /native). Call niblet_help to list the surface modes and every design command, or when asked what Niblet can do; call niblet_status to diagnose the connection before concluding the catalogue is empty. ${UNTRUSTED_DATA} The two catalogue tools require NIBLET_TOKEN; the bundled skill, niblet_help, and niblet_status do not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
   );
 

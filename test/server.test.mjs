@@ -65,6 +65,12 @@ function assertSafeError(result) {
   }
 }
 
+test('the advertised server version is the package version', async (t) => {
+  const { default: pkg } = await import('../package.json', { with: { type: 'json' } });
+  const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
+  assert.equal(client.getServerVersion().version, pkg.version);
+});
+
 test('the server exposes the two hosted tools, the local helpers, and every bundled document', async (t) => {
   const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
   const { tools: listed } = await client.listTools();
