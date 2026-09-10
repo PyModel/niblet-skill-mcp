@@ -368,6 +368,21 @@ test('the API origin is configurable but never taken from tool input', async (t)
   assert.equal(result.content.filter((item) => item.type === 'image').length, 1);
 });
 
+test('a 401 tells the agent what to relay to the user, without showing the token', async (t) => {
+  const client = await connect(t, { token: TOKEN, fetch: async () => new Response('', { status: 401 }) });
+  for (const name of ['find_ui_references', 'niblet_status']) {
+    const args = name === 'niblet_status' ? {} : { query: 'settings' };
+    const result = await client.callTool({ name, arguments: args });
+    const text = result.content[0].text;
+    assert.match(text, /authentication failed \(HTTP 401\)/);
+    assert.match(text, new RegExp(`${TOKEN.length} characters, not shown`));
+    assert.match(text, /Tell the user/);
+    assert.match(text, /shell.*overrides.*\.env/);
+    assert.match(text, /restart the MCP server/);
+    assert.doesNotMatch(text, new RegExp(TOKEN));
+  }
+});
+
 test('redirects and HTTP failures are sanitized and never retried', async (t) => {
   for (const status of [302, 401, 403, 404, 429, 500]) {
     await t.test(String(status), async (t) => {

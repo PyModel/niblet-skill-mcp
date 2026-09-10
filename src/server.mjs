@@ -39,9 +39,25 @@ function textResult(text) {
   return { content: [{ type: 'text', text }] };
 }
 
-function httpError(status) {
+/**
+ * A 401 is nearly always a token mismatch on the user's machine, so the message
+ * says exactly what to check and asks the agent to relay it. The token itself is
+ * never shown; its length is enough to tell two credentials apart.
+ */
+function authenticationFailed(token, apiOrigin) {
+  const length = typeof token === 'string' ? token.trim().length : 0;
+  return [
+    `Niblet API authentication failed (HTTP 401): ${apiOrigin} rejected the configured NIBLET_TOKEN (${length} characters, not shown).`,
+    'Tell the user: the token this MCP server is running with is not one the API accepts.',
+    'Most often a NIBLET_TOKEN exported in the shell (e.g. ~/.zshrc, ~/.zshrc.local) overrides the one in the MCP .env file, because node --env-file never replaces a variable that is already set.',
+    'To fix: make the shell export and the .env file agree (or remove the export), confirm the token matches the API at that origin, then restart the MCP server so it re-reads its environment.',
+    'Run niblet_status to confirm the fix.',
+  ].join(' ');
+}
+
+function httpError(status, context = {}) {
   if (status >= 300 && status < 400) return 'Niblet API redirects are not allowed.';
-  if (status === 401) return 'Niblet API authentication failed (HTTP 401). Check NIBLET_TOKEN.';
+  if (status === 401) return authenticationFailed(context.token, context.apiOrigin);
   if (status === 403) return 'Niblet API access denied (HTTP 403).';
   if (status === 404) return 'The requested Niblet resource was not found (HTTP 404).';
   if (status === 429) return 'Niblet API rate limit reached (HTTP 429). No retry was attempted.';
@@ -196,7 +212,7 @@ export function createServer({
       });
       signal.throwIfAborted();
       if (response.redirected) throw new ApiError('Niblet API redirects are not allowed.');
-      if (!response.ok) return { ok: false, message: httpError(response.status), status: response.status };
+      if (!response.ok) return { ok: false, message: httpError(response.status, { token, apiOrigin: API_ORIGIN }), status: response.status };
       const data = await readJson(response);
       signal.throwIfAborted();
       return { ok: true, data };
