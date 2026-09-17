@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import {
@@ -55,7 +58,7 @@ async function connect(t, options) {
 
 const SAFE_ERRORS = [
   /^NIBLET_TOKEN is /,
-  /^Niblet API (authentication failed|access denied|rate limit|is unavailable|request failed|redirects|returned|could not be reached|request timed out|request was cancelled|response exceeded)/,
+  /^Niblet API (authentication failed|access denied|rate limit|is unavailable|request failed|redirects|returned|could not be reached|request timed out|request was cancelled|response exceeded|origin )/,
   /^The requested Niblet resource was not found/,
   /^(MCP error|Invalid arguments|Tool .* not found)/,
 ];
@@ -131,6 +134,13 @@ test('bundled documents link to each other by resource URI, not by unresolvable 
   assert.match(contents[0].text, /\]\(niblet:\/\/skill\/commands\)/);
 });
 
+test('the packaged connection guide says hosted MCP is an account key', () => {
+  const text = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../skill/niblet/references/connection.md'), 'utf8');
+  assert.match(text, /niblet_at_/);
+  assert.match(text, /\/mcp/);
+  assert.doesNotMatch(text, /\/v1 rejects/);
+});
+
 test('niblet_help lists every command and needs no token', async (t) => {
   let requests = 0;
   const client = await connect(t, { token: '', fetch: async () => { requests++; return Response.json({}); } });
@@ -159,6 +169,8 @@ test('niblet_status reports a missing token without contacting the API or echoin
   const result = await client.callTool({ name: 'niblet_status', arguments: {} });
   assert.equal(requests, 0);
   assert.match(result.content[0].text, /Token:\s+not configured/);
+  assert.match(result.content[0].text, /Tell the user/);
+  assert.match(result.content[0].text, /www\.niblet\.com\/account/);
 });
 
 test('niblet_status never echoes the token and surfaces an unreachable API', async (t) => {
@@ -171,7 +183,7 @@ test('niblet_status never echoes the token and surfaces an unreachable API', asy
 });
 
 test('niblet_status treats an answered request as reachable, not a failure', async (t) => {
-  // /v1/stats is not part of the hosted contract; a 404 there is a healthy deployment.
+  // A 404 still means the origin answered. Current deploys serve /v1/stats; this is the old path.
   const client = await connect(t, { token: TOKEN, fetch: async () => new Response('', { status: 404 }) });
   const notFound = await client.callTool({ name: 'niblet_status', arguments: {} });
   assert.match(notFound.content[0].text, /API check:\s+reachable/);
@@ -214,6 +226,37 @@ test('missing or malformed credentials never reach the API', async (t) => {
       assert.equal(requests, 0);
     });
   }
+});
+
+test('placeholder and unexpanded tokens never reach the API', async (t) => {
+  for (const token of ['YOUR_NIBLET_KEY', '$NIBLET_TOKEN', '${NIBLET_TOKEN}', '<your-niblet-key>']) {
+    let requests = 0;
+    const client = await connect(t, { token, fetch: async () => {
+      requests++;
+      return Response.json({});
+    } });
+    const status = await client.callTool({ name: 'niblet_status', arguments: {} });
+    assert.equal(requests, 0, token);
+    assert.match(status.content[0].text, /Tell the user/);
+    assert.match(status.content[0].text, /Do not retry catalogue tools/);
+    for (const [name, args] of tools) assertSafeError(await client.callTool({ name, arguments: args }));
+    assert.equal(requests, 0, token);
+  }
+});
+
+test('a website API origin never reaches the network and tells the user how to fix it', async (t) => {
+  let requests = 0;
+  const client = await connect(t, {
+    token: TOKEN,
+    apiOrigin: 'https://www.niblet.com',
+    fetch: async () => { requests++; return Response.json({}); },
+  });
+  const status = await client.callTool({ name: 'niblet_status', arguments: {} });
+  assert.equal(requests, 0);
+  assert.match(status.content[0].text, /public website/);
+  assert.match(status.content[0].text, /Tell the user/);
+  assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
+  assert.equal(requests, 0);
 });
 
 test('query and id values cannot select another origin, route, or query parameter', async (t) => {
@@ -481,6 +524,57 @@ test('a 401 tells the agent what to relay to the user, without showing the token
     assert.match(text, /restart the MCP server/);
     assert.doesNotMatch(text, new RegExp(TOKEN));
   }
+});
+
+test('a 401 with an API error body relays that body, not the local guess', async (t) => {
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async () => Response.json({ error: 'That is not a Niblet key: keys start with "niblet_at_".' }, { status: 401 }),
+  });
+  const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } });
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /Niblet API authentication failed/);
+  assert.match(result.content[0].text, /keys start with "niblet_at_"/);
+  assert.doesNotMatch(result.content[0].text, /shell.*overrides/);
+  assert.doesNotMatch(result.content[0].text, new RegExp(TOKEN));
+});
+
+test('a custom API origin is noted but still contacted', async (t) => {
+  let requests = 0;
+  const client = await connect(t, {
+    token: TOKEN,
+    apiOrigin: 'https://api.example.com',
+    fetch: async () => {
+      requests++;
+      return Response.json({ apps: 1, screens: 1, captioned: 1, journeys: 1 });
+    },
+  });
+  const status = await client.callTool({ name: 'niblet_status', arguments: {} });
+  assert.match(status.content[0].text, /not api\.niblet\.com/);
+  assert.match(status.content[0].text, /confirm this is their own deployment/);
+  assert.equal(requests, 1);
+});
+
+test('a 401 JSON body that echoes the token is discarded', async (t) => {
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async () => Response.json({ error: `Bearer ${TOKEN} rejected` }, { status: 401 }),
+  });
+  const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } });
+  assertSafeError(result);
+  assert.doesNotMatch(result.content[0].text, new RegExp(TOKEN));
+  assert.doesNotMatch(result.content[0].text, new RegExp(TOKEN.slice(8)));
+  assert.match(result.content[0].text, /shell.*overrides/);
+});
+
+test('a 401 JSON body that HTML-encodes the token is discarded', async (t) => {
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async () => Response.json({ error: `Bearer &lt;${TOKEN}&gt; rejected` }, { status: 401 }),
+  });
+  const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } });
+  assertSafeError(result);
+  assert.doesNotMatch(result.content[0].text, new RegExp(TOKEN));
 });
 
 test('redirects and HTTP failures are sanitized and never retried', async (t) => {

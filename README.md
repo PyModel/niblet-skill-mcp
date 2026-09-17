@@ -80,9 +80,9 @@ Or use the equivalent host configuration:
 }
 ```
 
-The local adapter's three catalogue tools call REST `/v1`, not hosted MCP. They require an operator token for the configured self-hosted deployment; public `niblet_at_…` account keys do not authenticate `/v1`. Set `NIBLET_TOKEN`, `NIBLET_API_ORIGIN`, and `NIBLET_MEDIA_ORIGIN` in the host environment only when targeting that deployment.
+The local adapter's three catalogue tools call REST `/v1`, not hosted MCP. Public `niblet_at_…` account keys created at [niblet.com/account](https://www.niblet.com/account) authorize both `/v1` and `/mcp`. Set `NIBLET_TOKEN` to that key, plus `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` only when targeting a self-hosted deployment. Skill resources, `niblet_help`, and `niblet_status` configuration remain available with no token.
 
-**Ownership decision:** keep public, account-key catalogue access in the hosted HTTP MCP. Keep bundled resources, playbook prompts, local diagnostics, and the optional self-hosted REST bridge in this stdio adapter. Do not proxy hosted MCP through this package or add its local-only surfaces to the hosted service; keep only the three shared catalogue contracts in lockstep.
+**Ownership decision:** keep public, account-key catalogue access in the hosted HTTP MCP. Keep bundled resources, playbook prompts, local diagnostics, and the optional REST bridge in this stdio adapter. Do not proxy hosted MCP through this package or add its local-only surfaces to the hosted service; keep only the three shared catalogue contracts in lockstep.
 
 Node.js 24.15+; npx fetches the package on first launch. Keep every token in the host's secret/environment facility, never in a committed file or chat message.
 

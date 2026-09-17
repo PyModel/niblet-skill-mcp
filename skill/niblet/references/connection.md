@@ -8,7 +8,7 @@ The skill can work from the repository, product brief, and supplied screenshots 
 
 ## Local stdio MCP package
 
-Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call the configured REST `/v1` API and therefore need that deployment's **operator token**. A public `niblet_at_…` account key authenticates the hosted MCP endpoint instead; `/v1` rejects it.
+Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account) authorizes both `/v1` and hosted `/mcp`.
 
 The shortest local configuration uses the published package:
 
@@ -31,13 +31,13 @@ For a host using the common `mcpServers` JSON configuration shape:
 
 Adapt the shape to the host's documented configuration. The bundled `mcp.json` contains this token-free template; it does not load `.env`.
 
-For catalogue access against a self-hosted deployment, add `NIBLET_TOKEN` with that deployment's operator token plus `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN`. Prefer a host-managed secret/environment facility and keep tokens out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
-
-Public catalogue access should use the hosted MCP endpoint with an account key created at `https://www.niblet.com/account`; do not put that account key in this adapter's `NIBLET_TOKEN`.
+For catalogue access, set `NIBLET_TOKEN` to an account key created at `https://www.niblet.com/account` (one key works on the REST catalogue and the MCP endpoint alike), and leave `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` unset for the hosted defaults. Prefer a host-managed secret/environment facility and keep keys out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
 
 The package contacts `https://api.niblet.com` by default, or the HTTP(S) origin in `NIBLET_API_ORIGIN`. It sends the token as bearer authentication for API requests, and never to the media origin. `NIBLET_TOKEN` configures this local adapter; it is not automatically a remote HTTP client's authentication setting.
 
-After the host starts the entry, inspect its observed tool, resource, and prompt inventory. A saved configuration is not proof of a connection. `niblet://skill` and the four `niblet://skill/{commands,connection,evidence,native}` resources return the bundled documents without a token. The local adapter also registers every playbook entry as an MCP prompt named `niblet-<command>`. Catalogue calls require the operator token described above.
+After the host starts the entry, inspect its observed tool, resource, and prompt inventory. A saved configuration is not proof of a connection. `niblet://skill` and the four `niblet://skill/{commands,connection,evidence,native}` resources return the bundled documents without a token. The local adapter also registers every playbook entry as an MCP prompt named `niblet-<command>`. Catalogue calls require a key — against the hosted service, an account key from `/account`.
+
+If a catalogue tool fails, read the error: it tells you whether to relay a config change to the user (missing, unexpanded, or placeholder token; website origin instead of `api.niblet.com`) or to continue from `niblet://skill` without retrying. Do not conclude the catalogue is empty from an authentication failure. Hosted MCP at `https://api.niblet.com/mcp` is the other door for the same key; it does not expose `niblet_help` or `niblet_status`.
 
 ### Tool inputs
 

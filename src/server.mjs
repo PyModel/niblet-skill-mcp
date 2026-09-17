@@ -51,18 +51,23 @@ function textResult(text, structuredContent) {
 }
 
 /**
- * A 401 is nearly always a token mismatch on the user's machine, so the message
- * says exactly what to check and asks the agent to relay it. The token itself is
- * never shown; its length is enough to tell two credentials apart.
+ * A 401 is nearly always a token or origin mismatch on the user's machine, so the
+ * message says exactly what to check and asks the agent to relay it. The token
+ * itself is never shown; its length is enough to tell two credentials apart.
  */
+const LOCAL_CONTINUE =
+  'Do not retry catalogue tools. Do not conclude the catalogue is empty. niblet_help and niblet://skill remain available without a key.';
+
 function authenticationFailed(token, apiOrigin) {
   const length = typeof token === 'string' ? token.trim().length : 0;
   return [
     `Niblet API authentication failed (HTTP 401): ${apiOrigin} rejected the configured NIBLET_TOKEN (${length} characters, not shown).`,
-    'Tell the user: the token this MCP server is running with is not one the API accepts.',
+    'Tell the user: the token this MCP server is running with is not one the API at that origin accepts.',
     'Most often a NIBLET_TOKEN exported in the shell (e.g. ~/.zshrc, ~/.zshrc.local) overrides the one in the MCP .env file, because node --env-file never replaces a variable that is already set.',
-    'To fix: make the shell export and the .env file agree (or remove the export), confirm the token matches the API at that origin, then restart the MCP server so it re-reads its environment.',
+    'Another cause is pointing this adapter at the wrong origin, or using a key from a different deployment.',
+    `To fix: create a key at https://www.niblet.com/account, set it as NIBLET_TOKEN (or connect the host to https://api.niblet.com/mcp with Authorization: Bearer niblet_at_…), make the shell export and the .env file agree (or remove the export), then restart the MCP server so it re-reads its environment.`,
     'Run niblet_status to confirm the fix.',
+    LOCAL_CONTINUE,
   ].join(' ');
 }
 
@@ -78,7 +83,14 @@ function retryAfterSeconds(value) {
 function httpError(status, context = {}) {
   if (status >= 300 && status < 400) return 'Niblet API redirects are not allowed.';
   if (status === 401) return authenticationFailed(context.token, context.apiOrigin);
-  if (status === 403) return 'Niblet API access denied (HTTP 403).';
+  if (status === 403) {
+    return [
+      'Niblet API access denied (HTTP 403).',
+      'Tell the user: this origin refused the request. That is often a WAF or a key that is not allowed on this path, not a missing catalogue.',
+      'To fix: use a niblet_at_ account key from https://www.niblet.com/account against https://api.niblet.com. Do not rotate the key unless the API said it was unrecognised.',
+      LOCAL_CONTINUE,
+    ].join(' ');
+  }
   if (status === 404) return 'The requested Niblet resource was not found (HTTP 404).';
   if (status === 429) {
     const seconds = retryAfterSeconds(context.retryAfter);
@@ -86,6 +98,74 @@ function httpError(status, context = {}) {
   }
   if (status >= 500) return `Niblet API is unavailable (HTTP ${status}). No retry was attempted.`;
   return `Niblet API request failed (HTTP ${status}).`;
+}
+
+function originNote(apiOrigin) {
+  let host;
+  try {
+    host = new URL(apiOrigin).hostname;
+  } catch {
+    return null;
+  }
+  if (host === 'api.niblet.com' || host === 'localhost' || host === '127.0.0.1') return null;
+  if (wrongOriginMessage(apiOrigin)) return null;
+  return `Niblet API origin is ${host}, not api.niblet.com. Tell the user: confirm this is their own deployment. Catalogue calls will use this origin.`;
+}
+
+function leaksCredential(text, token) {
+  if (/&lt;|&#/i.test(text)) return true;
+  if (typeof token !== 'string' || token.trim() === '') return false;
+  const value = token.trim();
+  if (text.includes(value)) return true;
+  if (value.length >= 24 && text.includes(value.slice(8))) return true;
+  if (text.includes(Buffer.from(value).toString('base64'))) return true;
+  if (text.includes(encodeURIComponent(value))) return true;
+  return false;
+}
+
+async function messageFromErrorResponse(response, fallback, token) {
+  try {
+    const bytes = await readBounded(response);
+    const data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    const body = data && typeof data === 'object' && typeof data.error === 'string' ? data.error.trim() : '';
+    if (!body || leaksCredential(body, token)) return fallback;
+    if (body.startsWith('Niblet API')) return body;
+    if (fallback.startsWith('Niblet API authentication failed')) {
+      return `Niblet API authentication failed (HTTP 401). ${body}`;
+    }
+    if (fallback.startsWith('Niblet API access denied')) {
+      return `Niblet API access denied (HTTP 403). ${body}`;
+    }
+    return body;
+  } catch {
+    return fallback;
+  }
+}
+
+function wrongOriginMessage(apiOrigin) {
+  let host;
+  try {
+    host = new URL(apiOrigin).hostname;
+  } catch {
+    return null;
+  }
+  if (host === 'niblet.com' || host === 'www.niblet.com') {
+    return [
+      `Niblet API origin is the public website (${host}), not the API.`,
+      'Tell the user: this MCP is pointed at niblet.com instead of api.niblet.com.',
+      'To fix: leave NIBLET_API_ORIGIN unset or set it to https://api.niblet.com, then restart this MCP server.',
+      LOCAL_CONTINUE,
+    ].join(' ');
+  }
+  if (host === 'media.niblet.com') {
+    return [
+      'Niblet API origin is the media host, not the API.',
+      'Tell the user: NIBLET_API_ORIGIN is set to the media origin.',
+      'To fix: set NIBLET_API_ORIGIN to https://api.niblet.com or unset it, then restart this MCP server.',
+      LOCAL_CONTINUE,
+    ].join(' ');
+  }
+  return null;
 }
 
 /** Read a bounded body into one buffer; the caller decides how to decode it. */
@@ -275,12 +355,42 @@ export function createServer({
 
   function credentialError() {
     if (typeof token !== 'string' || token.trim() === '') {
-      return 'NIBLET_TOKEN is required for Niblet API tools. Configure it in the MCP server environment. The niblet://skill resource remains available.';
+      return [
+        'NIBLET_TOKEN is required for Niblet catalogue tools.',
+        'Tell the user: this local MCP has no key, so search cannot run.',
+        'To fix: create a key at https://www.niblet.com/account, set NIBLET_TOKEN in the MCP server environment, then restart this server; or connect the host to https://api.niblet.com/mcp with Authorization: Bearer niblet_at_….',
+        LOCAL_CONTINUE,
+      ].join(' ');
+    }
+    if (/^\$\{?[A-Z0-9_]+\}?$/.test(token)) {
+      return [
+        'NIBLET_TOKEN is the literal environment-variable name, not a key.',
+        'Tell the user: the MCP config stored the variable name unexpanded.',
+        'To fix: put the key itself (it starts with niblet_at_) in the MCP server environment, then restart.',
+        LOCAL_CONTINUE,
+      ].join(' ');
+    }
+    if (token === 'YOUR_NIBLET_KEY' || /^(<|\[)?your[-_ ]?niblet[-_ ]?(key|token)(>|\])?$/i.test(token)) {
+      return [
+        'NIBLET_TOKEN is the setup placeholder, not a key.',
+        'Tell the user: they still have the example text in the MCP config.',
+        'To fix: create a key at https://www.niblet.com/account, put it in the MCP server environment, then restart.',
+        LOCAL_CONTINUE,
+      ].join(' ');
     }
     if (!/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
-      return 'NIBLET_TOKEN is not a valid bearer token. Check the MCP server environment.';
+      return [
+        'NIBLET_TOKEN is not a valid bearer token.',
+        'Tell the user: the configured value is not a usable key.',
+        'To fix: paste a niblet_at_ key from https://www.niblet.com/account into the MCP server environment, then restart.',
+        LOCAL_CONTINUE,
+      ].join(' ');
     }
     return null;
+  }
+
+  function connectionError() {
+    return wrongOriginMessage(API_ORIGIN) || credentialError();
   }
 
   /** One bounded, fixed-origin, authenticated GET. Resolves to {ok:true,data} or {ok:false,message,status}. */
@@ -317,15 +427,20 @@ export function createServer({
       signal.throwIfAborted();
       if (response.redirected) throw new ApiError('Niblet API redirects are not allowed.');
       if (!response.ok) {
-        return {
-          ok: false,
-          message: httpError(response.status, {
-            token,
-            apiOrigin: API_ORIGIN,
-            retryAfter: response.headers.get('retry-after'),
-          }),
-          status: response.status,
-        };
+        const retryAfter = response.headers.get('retry-after');
+        const fallback = httpError(response.status, {
+          token,
+          apiOrigin: API_ORIGIN,
+          retryAfter,
+        });
+        let message = await messageFromErrorResponse(response, fallback, token);
+        if (response.status === 429) {
+          const seconds = retryAfterSeconds(retryAfter);
+          if (seconds !== null && !/Retry after/i.test(message)) {
+            message = `${message} Retry after ${seconds} seconds.`;
+          }
+        }
+        return { ok: false, message, status: response.status };
       }
       const data = await readJson(response);
       signal.throwIfAborted();
@@ -393,8 +508,8 @@ export function createServer({
     outputSchema: FindUiReferencesOutputSchema,
     annotations,
   }, async (input, extra) => {
-    const credential = credentialError();
-    if (credential) return errorResult(credential);
+    const connected = connectionError();
+    if (connected) return errorResult(connected);
 
     if (input.selectedIds?.length) {
       // Missing ids are omitted, and the remaining screens are numbered contiguously, as the catalogue does.
@@ -484,8 +599,8 @@ export function createServer({
         { materials: [], kind: input.kind },
       );
     }
-    const credential = credentialError();
-    if (credential) return errorResult(credential);
+    const connected = connectionError();
+    if (connected) return errorResult(connected);
 
     const result = await requestJson(['materials'], {
       q: input.query,
@@ -538,8 +653,8 @@ export function createServer({
     outputSchema: GetDesignReferenceOutputSchema,
     annotations,
   }, async (input, extra) => {
-    const credential = credentialError();
-    if (credential) return errorResult(credential);
+    const connected = connectionError();
+    if (connected) return errorResult(connected);
 
     const result = await requestJson(['design-reference'], {
       screenId: input.screenId,
@@ -632,7 +747,7 @@ export function createServer({
     }
     lines.push('', 'Reference documents (read as MCP resources):');
     for (const [slug, doc] of Object.entries(SKILL_DOCS)) lines.push(`  ${uriFor(slug)} — ${doc.title}`);
-    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons), get_design_reference (the recorded colors, typography, and components behind a web screen). All three need NIBLET_TOKEN; run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
+    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons), get_design_reference (the recorded colors, typography, and components behind a web screen). All three need a niblet_at_ key as NIBLET_TOKEN, or connect the host to https://api.niblet.com/mcp with that key. Run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
     lines.push('With no target or command, present this menu and wait for a choice rather than making changes.');
     return textResult(lines.join('\n'));
   });
@@ -650,9 +765,12 @@ export function createServer({
 
     // Presence and shape only — the playbook's doctor entry requires never displaying it.
     const credential = credentialError();
+    const originWrong = wrongOriginMessage(API_ORIGIN);
     if (typeof token !== 'string' || token.trim() === '') lines.push('Token:        not configured. Set NIBLET_TOKEN in the MCP server environment.');
     else if (credential) lines.push('Token:        present but malformed for a bearer credential. Check NIBLET_TOKEN.');
     else lines.push(`Token:        present (${token.trim().length} characters, not shown).`);
+    const note = originNote(API_ORIGIN);
+    if (note) lines.push(`Origin note:  ${note}`);
 
     const docs = await Promise.all(Object.keys(SKILL_DOCS).map(async (slug) => {
       try {
@@ -670,18 +788,17 @@ export function createServer({
       lines.push('', 'API not contacted (probe disabled).');
       return textResult(lines.join('\n'));
     }
-    if (credential) {
-      lines.push('', 'API not contacted: no usable token. The bundled documents and niblet_help remain available without one.');
+    if (originWrong || credential) {
+      lines.push('', originWrong || credential);
       return textResult(lines.join('\n'));
     }
 
     const result = await requestJson(['stats'], {}, extra.signal);
     if (!result.ok) {
       // Any HTTP status means the origin answered, which is what reachability asks.
-      // /v1/stats is not part of the hosted contract, so a 404 is a normal answer
-      // from a healthy deployment, not a failure.
+      // A 404 still means the origin is up; counts come from a current /v1/stats.
       if (result.status === 404) {
-        lines.push('', 'API check:    reachable — the configured origin answered. It does not serve catalogue counts; use find_ui_references to confirm the catalogue itself.');
+        lines.push('', 'API check:    reachable — the configured origin answered, but /v1/stats was not there. Tell the user: NIBLET_API_ORIGIN may point at the website or an old deployment, not https://api.niblet.com. To fix: unset NIBLET_API_ORIGIN for hosted, then restart this MCP server.');
         return textResult(lines.join('\n'));
       }
       if (result.status !== undefined) {
