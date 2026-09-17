@@ -7,6 +7,7 @@
  * reads them over stdio and has no access to the package directory, so the
  * rewrite happens on the way out rather than in the files themselves.
  */
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
 /** slug -> { file, title, description }. `skill` is SKILL.md; the rest are its references. */
@@ -68,6 +69,12 @@ export async function readSkillDoc(slug) {
   return rewriteLinks(text);
 }
 
+export function readSkillDocSync(slug) {
+  const entry = SKILL_DOCS[slug];
+  if (!entry) return null;
+  return rewriteLinks(readFileSync(new URL(`../skill/niblet/${entry.file}`, import.meta.url), 'utf8'));
+}
+
 /**
  * The command index, derived from commands.md so it cannot drift from the playbook.
  * Headings are `## Section` and ``### `name` — purpose``.
@@ -75,10 +82,12 @@ export async function readSkillDoc(slug) {
 export function parseCommands(markdown) {
   const sections = [];
   let current = null;
+  let active = null;
   for (const line of markdown.split('\n')) {
     const section = /^##\s+(?!#)(.+?)\s*$/.exec(line);
     if (section) {
       current = { section: section[1], commands: [] };
+      active = null;
       sections.push(current);
       continue;
     }
@@ -86,8 +95,16 @@ export function parseCommands(markdown) {
     if (command && current) {
       // Names arrive as `polish`, or `pin` / `unpin` for a paired helper.
       const names = [...command[1].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-      if (names.length) current.commands.push({ names, purpose: command[2] });
+      if (names.length) {
+        active = { names, purpose: command[2], instructions: [] };
+        current.commands.push(active);
+      }
+      continue;
     }
+    if (active) active.instructions.push(line);
+  }
+  for (const section of sections) {
+    for (const command of section.commands) command.instructions = command.instructions.join('\n').trim();
   }
   return sections.filter((s) => s.commands.length);
 }
