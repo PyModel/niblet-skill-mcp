@@ -3,12 +3,12 @@ name: niblet
 description: Keep interface work anchored to the product it belongs to instead of a generic template. Sets a short design contract, builds from the components and tokens already in the codebase, covers the states a surface can actually reach, and closes by looking at the rendered result. Use when building, reworking, or assessing a web or native interface. Trigger with "niblet", "niblet skill", "niblet designer ui", or "niblet review". Skip backend, CLI, data, and infrastructure work, prose-only tasks, and questions the product's own design system already settles.
 license: Apache-2.0
 metadata:
-  version: "0.3.1"
-  author: "Mohamed Elkholy (elkaix)"
-  organization: "PyModel"
-  source: "https://github.com/PyModel/niblet-skill-mcp"
-  compatibility: "Claude Code, Codex, Cursor, and GitHub Copilot, or any agent that can open repository files and call an MCP tool."
-  tags: "interface-design, product-ui, design-contract, state-coverage, accessibility, native"
+  version: '0.4.0',
+  author: 'Mohamed Elkholy (elkaix)'
+  organization: 'PyModel'
+  source: 'https://github.com/PyModel/niblet-skill-mcp'
+  compatibility: 'Claude Code, Codex, Cursor, and GitHub Copilot, or any agent that can open repository files and call an MCP tool.'
+  tags: 'interface-design, product-ui, design-contract, state-coverage, accessibility, native'
 ---
 
 # Niblet
@@ -31,12 +31,12 @@ Build an interface that belongs to this product, not a generic template. [Niblet
 
 Choose by the job of each surface, not the repository's category. Different surfaces in one product may use different modes. Persist the choice only in that surface's brief when persistence is requested; do not impose a project-wide mode.
 
-| Mode | User's job | Design priority | Common surfaces |
-| --- | --- | --- | --- |
-| **Persuade** | Decide and act | Make the proposition, evidence, trade-offs, and next action understandable | Marketing, pricing, acquisition |
-| **Operate** | Complete a task | Legible state, efficient controls, predictable navigation, and recovery | Apps, dashboards, settings, native utilities |
-| **Read** | Understand | Comprehension, typography, reading rhythm, navigation, and useful examples | Documentation, articles, guides |
-| **Experience** | Engage with the work itself | Let the artifact lead; keep navigation and chrome subordinate but usable | Portfolios, galleries, interactive work |
+| Mode           | User's job                  | Design priority                                                            | Common surfaces                              |
+| -------------- | --------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- |
+| **Persuade**   | Decide and act              | Make the proposition, evidence, trade-offs, and next action understandable | Marketing, pricing, acquisition              |
+| **Operate**    | Complete a task             | Legible state, efficient controls, predictable navigation, and recovery    | Apps, dashboards, settings, native utilities |
+| **Read**       | Understand                  | Comprehension, typography, reading rhythm, navigation, and useful examples | Documentation, articles, guides              |
+| **Experience** | Engage with the work itself | Let the artifact lead; keep navigation and chrome subordinate but usable   | Portfolios, galleries, interactive work      |
 
 Mode is a prioritization tool, not a visual preset. A pricing page still needs usable controls; a gallery still needs accessible navigation; an application can have character without obscuring its tasks.
 

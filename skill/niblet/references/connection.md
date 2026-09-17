@@ -31,7 +31,7 @@ For a host using the common `mcpServers` JSON configuration shape:
 
 Adapt the shape to the host's documented configuration. The bundled `mcp.json` contains this token-free template; it does not load `.env`.
 
-For catalogue access, set `NIBLET_TOKEN` to an account key created at `https://www.niblet.com/account` (one key works on the REST catalogue and the MCP endpoint alike), and leave `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` unset for the hosted defaults. Prefer a host-managed secret/environment facility and keep keys out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
+Niblet itself is a hosted service — there is nothing to self-host. For catalogue access, point this adapter at the hosted API: set `NIBLET_TOKEN` to an account key created at `https://www.niblet.com/account` (one key works on the REST catalogue and the MCP endpoint alike), and leave `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` unset for the hosted defaults. Prefer a host-managed secret/environment facility and keep keys out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
 
 The package contacts `https://api.niblet.com` by default, or the HTTP(S) origin in `NIBLET_API_ORIGIN`. It sends the token as bearer authentication for API requests, and never to the media origin. `NIBLET_TOKEN` configures this local adapter; it is not automatically a remote HTTP client's authentication setting.
 
@@ -43,11 +43,11 @@ If a catalogue tool fails, read the error: it tells you whether to relay a confi
 
 Tool arguments use **`query`**, not `q`. The adapter translates `query` to the REST API's `q` query parameter. Omitted optional fields use the defaults below.
 
-| Tool | Required arguments | Optional arguments | Returned data |
-| --- | --- | --- | --- |
-| `find_ui_references` | `query`: string, 1–240 characters | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedIds`: one to three screen IDs, each 1–160 characters; `clientSkillVersion`: string, 1–64 characters | Human-readable reference lines and images in `content`; typed references in `structuredContent` |
-| `find_ui_materials` | `query`: string, 1–240 characters; `kind`: `font`, `icon`, `animated_icon`, or `pack` | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedId`: string, 1–160 characters; `userConfirmed`: `true`; `clientSkillVersion`: string, 1–64 characters | Human-readable materials in `content`; typed name, license, description, and URL records in `structuredContent` |
-| `get_design_reference` | one of `screenId` (from a reference) or `packSlug` | `sections`: one or more of `overview`, `colors`, `typography`, `components`, `provenance`; `clientSkillVersion`: string, 1–64 characters | The requested markdown in `content`; typed slug, name, theme, markdown, and returned section names in `structuredContent` |
+| Tool                   | Required arguments                                                                    | Optional arguments                                                                                                                                                          | Returned data                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `find_ui_references`   | `query`: string, 1–240 characters                                                     | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedIds`: one to three screen IDs, each 1–160 characters; `clientSkillVersion`: string, 1–64 characters   | Human-readable reference lines and images in `content`; typed references in `structuredContent`                           |
+| `find_ui_materials`    | `query`: string, 1–240 characters; `kind`: `font`, `icon`, `animated_icon`, or `pack` | `platform`: `ios` or `web`; `limit`: integer 1–3, default 2; `selectedId`: string, 1–160 characters; `userConfirmed`: `true`; `clientSkillVersion`: string, 1–64 characters | Human-readable materials in `content`; typed name, license, description, and URL records in `structuredContent`           |
+| `get_design_reference` | one of `screenId` (from a reference) or `packSlug`                                    | `sections`: one or more of `overview`, `colors`, `typography`, `components`, `provenance`; `clientSkillVersion`: string, 1–64 characters                                    | The requested markdown in `content`; typed slug, name, theme, markdown, and returned section names in `structuredContent` |
 
 Without `selectedIds`, `find_ui_references` searches and attaches thumbnail images. With `selectedIds`, it reads those exact screens and attaches inspection-quality images; an ID the catalogue does not hold is skipped rather than failing the call. `query` is required in both cases.
 
@@ -107,11 +107,11 @@ The remote service does not promise the `niblet://skill` resource. Neither deplo
 
 ## Capability checks and manual alternatives
 
-| Requested helper | Capability to inspect | Honest alternative |
-| --- | --- | --- |
-| `doctor` | Host connection state, runtime/path configuration, token presence, tool inventory | Explain the observed failed boundary and the needed configuration change; no bundled diagnostic executable |
-| `hooks` | Host-specific hook API and existing event configuration | Invoke the finish gate manually before handoff; no bundled hook installer |
-| `pin` / `unpin` | Host's documented command-shortcut registration | Invoke “Niblet <command> <target>” directly; no bundled shortcut installer |
-| `live` | Authorized browser/simulator session and available interaction tools | Work from supplied screenshots and targeted manual inspection; no bundled browser service or watcher |
+| Requested helper | Capability to inspect                                                             | Honest alternative                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `doctor`         | Host connection state, runtime/path configuration, token presence, tool inventory | Explain the observed failed boundary and the needed configuration change; no bundled diagnostic executable |
+| `hooks`          | Host-specific hook API and existing event configuration                           | Invoke the finish gate manually before handoff; no bundled hook installer                                  |
+| `pin` / `unpin`  | Host's documented command-shortcut registration                                   | Invoke “Niblet <command> <target>” directly; no bundled shortcut installer                                 |
+| `live`           | Authorized browser/simulator session and available interaction tools              | Work from supplied screenshots and targeted manual inspection; no bundled browser service or watcher       |
 
 The full task instructions for these helpers are in [the command playbook](commands.md). Confirm capabilities through real host results, not inferred availability from a command name.
