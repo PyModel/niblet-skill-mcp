@@ -14,7 +14,7 @@ For UI design, implementation, refinement, or niblet-skill review, follow [skill
 - The local adapter additionally exposes `niblet_help` and `niblet_status`, and serves every bundled document as a resource (`niblet://skill` plus `niblet://skill/{commands,connection,evidence,native}`). These are local-only: they read bundled files, require no token, and must never be added to the hosted catalogue contract. `niblet_status` is the only one that contacts the API, because reaching it is the result being reported; it reports token presence and length, never the token.
 - `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` retarget the adapter at a local deployment. They default to `https://api.niblet.com` and `https://media.niblet.com`, reject non-HTTP values, and are never derived from tool input. Images are fetched only from those two origins and never carry the token.
 - `NIBLET_TOKEN` is needed for catalogue requests, not the standalone skill or bundled resource. Preserve fixed-origin reads, redirect rejection, cancellation, size/deadline bounds, and sanitized failures.
-- `mcp.json` is a template: both paths are `/absolute/path/to/niblet-skill-mcp/...` placeholders a user replaces with their own checkout. Never commit a real workstation path. Saving this file is not host registration.
+- `mcp.json` is an npx-based template for the token-free local helpers and resources. It does not load `.env`. Self-hosted catalogue access requires host-managed `NIBLET_TOKEN`, `NIBLET_API_ORIGIN`, and `NIBLET_MEDIA_ORIGIN`; never commit real credentials or workstation paths. Saving this file is not host registration.
 
 ## Reference and documentation changes
 

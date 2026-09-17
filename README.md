@@ -54,34 +54,37 @@ The [workflow](skill/niblet/SKILL.md) settles the screen's job, primary action, 
 
 ## Connect the server
 
-Pick one. Hosted, if your host speaks HTTP MCP:
+Pick one. For public catalogue access, use hosted MCP with the `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account):
 
 ```sh
 claude mcp add --transport http niblet https://api.niblet.com/mcp \
-  --header "Authorization: Bearer $NIBLET_TOKEN"
+  --header "Authorization: Bearer $NIBLET_ACCOUNT_KEY"
 ```
 
-Local over stdio, via the Claude Code CLI:
+For the token-free bundled skill resources, `niblet_help`, and `niblet_status`, run the local stdio adapter:
 
 ```sh
-claude mcp add niblet --env NIBLET_TOKEN=$NIBLET_TOKEN -- npx -y @pymodel/niblet
+claude mcp add niblet -- npx -y @pymodel/niblet
 ```
 
-Or the equivalent in any host's MCP config file:
+Or use the equivalent host configuration:
 
 ```json
 {
   "mcpServers": {
     "niblet": {
       "command": "npx",
-      "args": ["-y", "@pymodel/niblet"],
-      "env": { "NIBLET_TOKEN": "<your Niblet API token>" }
+      "args": ["-y", "@pymodel/niblet"]
     }
   }
 }
 ```
 
-Node.js 24.15+; npx fetches the package on first launch. Create an account at [niblet.com/sign-up](https://www.niblet.com/sign-up), confirm the emailed code, then create a key at [niblet.com/account](https://www.niblet.com/account). It is shown once. Keep it in your host's environment, never in a committed file or a chat message.
+The local adapter's three catalogue tools call REST `/v1`, not hosted MCP. They require an operator token for the configured self-hosted deployment; public `niblet_at_…` account keys do not authenticate `/v1`. Set `NIBLET_TOKEN`, `NIBLET_API_ORIGIN`, and `NIBLET_MEDIA_ORIGIN` in the host environment only when targeting that deployment.
+
+**Ownership decision:** keep public, account-key catalogue access in the hosted HTTP MCP. Keep bundled resources, playbook prompts, local diagnostics, and the optional self-hosted REST bridge in this stdio adapter. Do not proxy hosted MCP through this package or add its local-only surfaces to the hosted service; keep only the three shared catalogue contracts in lockstep.
+
+Node.js 24.15+; npx fetches the package on first launch. Keep every token in the host's secret/environment facility, never in a committed file or chat message.
 
 Saving the config does not register the server, so confirm it worked. `niblet_status` reports the configured origins, whether a usable token is present, and whether the API answers:
 
@@ -97,11 +100,13 @@ API check:    OK
 | --- | --- | --- |
 | `find_ui_references` | One concrete unresolved question about a layout, state, or interaction. Returns one to three real screens as inline images. | yes |
 | `find_ui_materials` | A font, icon, or animated icon role your design system does not already cover. Returns the recorded license with each result. | yes |
-| `get_design_reference` | The colours, typography, and components recorded for a web screen you already picked. Pass the `screenId` from a reference, or a pack slug. | yes |
+| `get_design_reference` | All or selected `overview`, `colors`, `typography`, `components`, and `provenance` sections recorded for a web screen you already picked. Pass the `screenId` from a reference, or a pack slug. | yes |
 | `niblet_help` | "What can Niblet do?", or choosing between commands. Lists the four surface modes and every command; pass `command` for one entry. | no |
 | `niblet_status` | Diagnosing the connection before concluding the catalogue is empty. Never prints the token. | no |
 
 The three catalogue tools match the hosted service exactly. `niblet_help` and `niblet_status` are local-only.
+
+Each catalogue result keeps its human-readable text and images in MCP `content` and also returns validated `structuredContent`: typed references, typed materials, or a typed design reference. Calls made from the bundled skill identify its `metadata.version` through `clientSkillVersion`.
 
 Only web screens carry a design reference, and a web result says so in its own text, so an agent that finds a screen worth borrowing from can read the system behind it in one follow-up call.
 
@@ -117,11 +122,16 @@ The bundled documents, served without a token. Cross-links between them are rewr
 | `niblet://skill/evidence` | When to pull an external reference, and how to use one |
 | `niblet://skill/native` | Platform constraints and the native finish gate |
 
+## Prompts
+
+The local adapter registers every command-playbook entry as an MCP prompt named `niblet-<command>` (for example, `niblet-polish` and `niblet-harden`). Prompt arguments accept an optional `target`. Hosts that expose MCP prompts can present them as native shortcuts; the standalone filesystem skill still uses ordinary language. Prompts need no token.
+
+
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
-| `NIBLET_TOKEN` | Required by the two catalogue tools. |
+| `NIBLET_TOKEN` | Operator token for this adapter's configured REST API origin. Not a public `niblet_at_…` account key. |
 | `NIBLET_API_ORIGIN` | Retarget at a local deployment. Unset for production. |
 | `NIBLET_MEDIA_ORIGIN` | Same, for images. Unset for production. |
 
@@ -131,7 +141,6 @@ The bundled documents, served without a token. Cross-links between them are rewr
 git clone https://github.com/PyModel/niblet-skill-mcp
 cd niblet-skill-mcp
 npm ci --ignore-scripts
-cp .env.example .env   # then put your token in NIBLET_TOKEN
 npm test
 ```
 

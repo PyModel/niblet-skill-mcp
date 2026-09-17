@@ -1,6 +1,6 @@
 # Niblet command playbook
 
-These names select a task for the coding agent. Invoke them in ordinary language (for example, “Use Niblet polish on the billing screen”). Slash syntax works only if the host registers it. There is no command-line dispatcher in this skill.
+These names select a task for the coding agent. Invoke them in ordinary language (for example, “Use Niblet polish on the billing screen”). The local MCP adapter also registers each entry as `niblet-<command>`; whether a host renders those prompts as slash commands is host-dependent. There is no command-line dispatcher in this skill.
 
 Apply the design contract and finish gate in [SKILL.md](../SKILL.md) to every implementation command. Select the requested command, not a chain of every command. The output for a planning or review command is its stated artifact; it does not authorize code changes. Use an existing surface brief for persistent artifacts, and create a document only when requested.
 

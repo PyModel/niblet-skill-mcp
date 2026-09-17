@@ -3,7 +3,7 @@ name: niblet
 description: Keep interface work anchored to the product it belongs to instead of a generic template. Sets a short design contract, builds from the components and tokens already in the codebase, covers the states a surface can actually reach, and closes by looking at the rendered result. Use when building, reworking, or assessing a web or native interface. Trigger with "niblet", "niblet skill", "niblet designer ui", or "niblet review". Skip backend, CLI, data, and infrastructure work, prose-only tasks, and questions the product's own design system already settles.
 license: Apache-2.0
 metadata:
-  version: "0.2.0"
+  version: "0.3.1"
   author: "Mohamed Elkholy (elkaix)"
   organization: "PyModel"
   source: "https://github.com/PyModel/niblet-skill-mcp"
@@ -19,7 +19,7 @@ Build an interface that belongs to this product, not a generic template. [Niblet
 
 1. Identify the requested surface, action, and scope. Read the product brief, relevant current screens, components, tokens, content, and platform constraints. Inspect the repository directly; this skill has no setup script.
 2. Select the surface mode below and write a compact design contract in the conversation or the existing surface brief. Ask only for a consequential decision that the available product evidence cannot answer. Mark other assumptions.
-3. Read [the command playbook](references/commands.md) for the requested command. Commands are agent work instructions, not bundled executables or guaranteed slash-command registrations. For native work, also read [native guidance](references/native.md).
+3. Read [the command playbook](references/commands.md) for the requested command. The local MCP adapter registers each entry as `niblet-<command>`; a standalone filesystem installation invokes the same work instructions in ordinary language. For native work, also read [native guidance](references/native.md).
 4. Work within the contract. Use existing components and tokens before introducing new ones. If a concrete visual question remains unresolved, follow [the evidence policy](references/evidence.md); reference retrieval is optional, never a prerequisite to useful work.
 5. Cover the applicable states and run the bounded finish gate. Report the delivered scope, evidence actually inspected, and any specific verification limitation.
 
@@ -95,6 +95,6 @@ If rendering is unavailable, inspect the reachable implementation and report exa
 
 ## Optional connection and helpers
 
-Read [the connection guide](references/connection.md) when installing or invoking MCP tools, diagnosing a connection, or using host-dependent helpers. The local package exposes catalogue tools and the `niblet://skill` resource; the existing remote endpoint exposes only two search tools. Neither service implements UI review, hooks, element pinning, selector discovery, or live browser control.
+Read [the connection guide](references/connection.md) when installing or invoking MCP tools, diagnosing a connection, or using host-dependent helpers. The local package exposes the three catalogue tools, local helpers, and the `niblet://skill` resources; the remote endpoint exposes exactly the same three catalogue tools. Pass the `metadata.version` value at the top of this file as `clientSkillVersion` on every catalogue call. Neither service implements UI review, hooks, element pinning, selector discovery, or live browser control.
 
 The command playbook includes manual alternatives for `live`, `hooks`, `doctor`, and `pin`. State which host capability was actually used. Do not claim that a prompt created automation or that an MCP connection exists without an observed host result.
