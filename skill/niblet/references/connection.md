@@ -6,6 +6,24 @@ Install or make available the entire `skill/niblet` directory in the host's docu
 
 The skill can work from the repository, product brief, and supplied screenshots without MCP. The public catalogue is [https://niblet.com](https://niblet.com). Browser inspection, native simulator access, hook execution, and element selection come from the host, not from this skill or the Niblet API.
 
+## Agent retrieval surfaces
+
+Separate human catalogue browsing from agent evidence retrieval:
+
+| Surface                                                                                                  | Role                                  | Bound                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP `find_ui_references` / `find_ui_materials` / `get_design_reference`                                  | Preferred agent evidence path         | 1–3 results per call                                                                                                                    |
+| Compact JSON search `GET https://www.niblet.com/api/search?q=<question>&limit=3&for=agent`               | Fallback only when MCP is unavailable | Always use the absolute `www` origin; pass `for=agent` and `limit` 1–3. The route hard-caps agent calls at 3 even if `limit` is raised. |
+| Human pages (`/search`, app/collection/listing galleries) and ordinary `/api/search` without `for=agent` | People browsing the catalogue         | Unbounded for humans (page/API defaults apply); never an agent retrieval surface                                                        |
+
+When MCP tools are connected, call them. Do not open niblet.com HTML search or gallery pages to gather references. When MCP is unavailable and a concrete unresolved question still needs catalogue evidence, call only:
+
+```text
+GET https://www.niblet.com/api/search?q=<question>&limit=3&for=agent
+```
+
+Use that absolute `www` URL — apex `niblet.com` redirects to `www`, a bare `/api/search` path does not resolve from an installed skill, and `https://api.niblet.com` is bearer-authenticated REST/MCP, not this fallback. Read only the JSON payload, choose at most three IDs, and stop. Do not follow HTML result pages, paginate the catalogue, omit `for=agent`, or raise `limit` above 3 for agent work.
+
 ## Local stdio MCP package
 
 Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account) authorizes both `/v1` and hosted `/mcp`.

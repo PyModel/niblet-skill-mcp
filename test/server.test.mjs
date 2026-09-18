@@ -77,6 +77,18 @@ function assertSafeError(result) {
   }
 }
 
+test('package, skill frontmatter, and contract skill versions stay aligned', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const skill = readFileSync(join(root, 'skill/niblet/SKILL.md'), 'utf8');
+  const fence = skill.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  assert.ok(fence, 'SKILL.md must have YAML frontmatter');
+  const match = fence[1].match(/^\s*version:\s*['"]([^'"]+)['"]\s*$/m);
+  assert.ok(match, 'SKILL.md frontmatter must declare metadata.version');
+  assert.equal(pkg.version, match[1]);
+  assert.equal(NIBLET_SKILL_VERSION, match[1]);
+});
+
 test('the advertised server version is the package version', async (t) => {
   const { default: pkg } = await import('../package.json', { with: { type: 'json' } });
   const client = await connect(t, { token: TOKEN, fetch: async () => Response.json({}) });
