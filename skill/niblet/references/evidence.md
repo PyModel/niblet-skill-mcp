@@ -2,7 +2,7 @@
 
 ## Decide whether a lookup earns its place
 
-Start with the product brief, current interface, and local design system. Use external evidence only when a specific unresolved question could change a design decision: for example, grouping controls in a dense inspector, showing an empty transaction list, or explaining a permission request.
+Start with the product brief, current interface, and local design system. Use external evidence only when a specific unresolved question could change a design decision: for example, grouping controls in a dense inspector, showing an empty transaction list, or explaining a permission request. Skip the lookup when the brief already settles direction, the task implements an established design, the repository or design system answers the question, or the result would only supply inspiration. A reference that does not change or validate a design decision is unnecessary context.
 
 Write the question before searching. Prefer one to three relevant screens, not an inspiration collection. Describe the screen by what it does — "paywall with three plans and a trial toggle", "empty inbox state", "settings list with grouped toggles" — because the library is indexed on generated descriptions, not app names. Refine a search at most once for the same question. Stop when the evidence answers it or ceases to be useful.
 
