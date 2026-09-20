@@ -617,6 +617,104 @@ test('a safe Retry-After hint is surfaced without retrying', async (t) => {
   assert.equal(calls, 1);
 });
 
+const MATERIALS = { materials: [{ name: 'Inter', license: 'OFL-1.1', description: 'A typeface.', url: 'https://example.invalid' }] };
+const FONT_ARGS = { query: 'sans', kind: 'font' };
+
+/** A fetch that plays back `steps` in order, then repeats the last one, and a sleep that records instead of waiting. */
+function scripted(steps) {
+  const waits = [];
+  let calls = 0;
+  return {
+    waits,
+    calls: () => calls,
+    options: {
+      token: TOKEN,
+      random: () => 1,
+      sleep: async (ms) => { waits.push(ms); },
+      fetch: async () => {
+        const step = steps[Math.min(calls, steps.length - 1)];
+        calls++;
+        return step();
+      },
+    },
+  };
+}
+
+test('a transient gateway or capacity failure is retried within a bounded budget', async (t) => {
+  for (const status of [502, 503, 504]) {
+    await t.test(String(status), async (t) => {
+      const script = scripted([() => new Response('', { status }), () => Response.json(MATERIALS)]);
+      const client = await connect(t, script.options);
+      const result = await client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS });
+      assert.notEqual(result.isError, true);
+      assert.equal(script.calls(), 2);
+      assert.deepEqual(script.waits, [500]);
+    });
+  }
+});
+
+test('an unreachable API is retried, and the backoff doubles', async (t) => {
+  const script = scripted([
+    () => { throw new Error(`network details: ${TOKEN}`); },
+    () => { throw new Error('still down'); },
+    () => Response.json(MATERIALS),
+  ]);
+  const client = await connect(t, script.options);
+  const result = await client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS });
+  assert.notEqual(result.isError, true);
+  assert.equal(script.calls(), 3);
+  assert.deepEqual(script.waits, [500, 1000]);
+});
+
+test('retries stop at three attempts and the error says so', async (t) => {
+  const script = scripted([() => new Response('', { status: 503 })]);
+  const client = await connect(t, script.options);
+  const result = await client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS });
+  assertSafeError(result);
+  assert.match(result.content[0].text, /after 3 attempts/);
+  assert.doesNotMatch(result.content[0].text, /No retry was attempted/);
+  assert.equal(script.calls(), 3);
+});
+
+test('a short Retry-After is honoured; a long one is handed to the user', async (t) => {
+  const short = scripted([() => new Response('', { status: 429, headers: { 'Retry-After': '2' } }), () => Response.json(MATERIALS)]);
+  const result = await (await connect(t, short.options)).callTool({ name: 'find_ui_materials', arguments: FONT_ARGS });
+  assert.notEqual(result.isError, true);
+  assert.deepEqual(short.waits, [2000]);
+
+  const bare = scripted([() => new Response('', { status: 429 })]);
+  assertSafeError(await (await connect(t, bare.options)).callTool({ name: 'find_ui_materials', arguments: FONT_ARGS }));
+  assert.equal(bare.calls(), 1, 'a 429 with no hint is a budget, not a blip');
+});
+
+test('failures that a retry cannot fix are never retried', async (t) => {
+  for (const status of [400, 401, 403, 404, 500]) {
+    await t.test(String(status), async (t) => {
+      const script = scripted([() => new Response('', { status })]);
+      const client = await connect(t, script.options);
+      await client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS });
+      assert.equal(script.calls(), 1);
+      assert.deepEqual(script.waits, []);
+    });
+  }
+});
+
+test('cancelling during a backoff wait stops the retry', async (t) => {
+  const abort = new AbortController();
+  let calls = 0;
+  const client = await connect(t, {
+    token: TOKEN,
+    fetch: async () => { calls++; return new Response('', { status: 503 }); },
+    sleep: (ms, signal) => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      abort.abort();
+    }),
+  });
+  await assert.rejects(client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS }, undefined, { signal: abort.signal }));
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(calls, 1);
+});
+
 test('malformed JSON, invalid response shapes, and transport failures are sanitized', async (t) => {
   const responses = [
     () => new Response(`{"secret":"${TOKEN}`),

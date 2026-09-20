@@ -21,6 +21,15 @@ const DEFAULT_API_ORIGIN = 'https://api.niblet.com';
 const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
 const REQUEST_TIMEOUT = 15_000;
+// Catalogue reads are GETs with no side effect, so repeating one is safe. This client is the
+// only layer that retries, and only what a moment's wait can fix: an unreachable host, a gateway
+// or capacity refusal, or a rate limit that names a short wait. A timeout is not retried, since a
+// server too slow to answer is not helped by a second request.
+const MAX_ATTEMPTS = 3;
+const RETRY_STATUSES = new Set([502, 503, 504]);
+const BACKOFF_BASE = 500;
+const MAX_RETRY_WAIT = 5_000;
+const RETRY_DEADLINE = 25_000;
 const CACHE_TTL = 5 * 60_000;
 const CACHE_LIMIT = 64;
 const CACHEABLE_SEGMENTS = new Set(['search', 'screens', 'materials', 'design-reference']);
@@ -69,6 +78,14 @@ function authenticationFailed(token, apiOrigin) {
     'Run niblet_status to confirm the fix.',
     LOCAL_CONTINUE,
   ].join(' ');
+}
+
+function abortableSleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+  });
 }
 
 function retryAfterSeconds(value) {
@@ -310,6 +327,8 @@ export function createServer({
   apiOrigin = process.env.NIBLET_API_ORIGIN,
   mediaOrigin = process.env.NIBLET_MEDIA_ORIGIN,
   fetch: fetchImpl = globalThis.fetch,
+  sleep = abortableSleep,
+  random = Math.random,
 } = {}) {
   const API_ORIGIN = originOf(apiOrigin, DEFAULT_API_ORIGIN, 'NIBLET_API_ORIGIN');
   const MEDIA_ORIGINS = new Set([originOf(mediaOrigin, DEFAULT_MEDIA_ORIGIN, 'NIBLET_MEDIA_ORIGIN'), API_ORIGIN]);
@@ -408,6 +427,41 @@ export function createServer({
       if (cached && cached.expiresAt > Date.now()) return { ok: true, data: cached.data };
       responseCache.delete(cacheKey);
     }
+    const startedAt = Date.now();
+    for (let attempt = 1; ; attempt++) {
+      const result = await attemptJson(url, callerSignal);
+      if (result.ok) {
+        if (cacheable) {
+          if (responseCache.size >= CACHE_LIMIT && !responseCache.has(cacheKey)) {
+            responseCache.delete(responseCache.keys().next().value);
+          }
+          responseCache.set(cacheKey, { data: result.data, expiresAt: Date.now() + CACHE_TTL });
+        }
+        return result;
+      }
+      const { retryInMs, ...failure } = result;
+      if (retryInMs === undefined) return attempt === 1 ? failure : afterAttempts(failure, attempt);
+      // Full jitter on our own backoff; a server's Retry-After is a floor, so it is kept as given.
+      const wait = retryInMs ?? Math.ceil(random() * BACKOFF_BASE * 2 ** (attempt - 1));
+      if (attempt >= MAX_ATTEMPTS || wait > MAX_RETRY_WAIT || Date.now() - startedAt + wait > RETRY_DEADLINE) {
+        return afterAttempts(failure, attempt);
+      }
+      try {
+        await sleep(wait, callerSignal ?? new AbortController().signal);
+      } catch {
+        return { ok: false, message: 'Niblet API request was cancelled.' };
+      }
+      if (callerSignal?.aborted) return { ok: false, message: 'Niblet API request was cancelled.' };
+    }
+  }
+
+  function afterAttempts(failure, attempts) {
+    const note = attempts === 1 ? 'No retry was attempted.' : `Gave up after ${attempts} attempts.`;
+    return { ...failure, message: failure.message.replace(/ ?No retry was attempted\.$/, '') + ` ${note}` };
+  }
+
+  /** One request. A failure carries `retryInMs` only when waiting could fix it: null for "back off", a number for a server-named wait. */
+  async function attemptJson(url, callerSignal) {
     const controller = new AbortController();
     const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
     let timedOut = false;
@@ -440,22 +494,20 @@ export function createServer({
             message = `${message} Retry after ${seconds} seconds.`;
           }
         }
-        return { ok: false, message, status: response.status };
+        const failure = { ok: false, message, status: response.status };
+        const hinted = retryAfterSeconds(retryAfter);
+        if (RETRY_STATUSES.has(response.status)) return { ...failure, retryInMs: hinted === null ? null : hinted * 1000 };
+        if (response.status === 429 && hinted !== null) return { ...failure, retryInMs: hinted * 1000 };
+        return failure;
       }
       const data = await readJson(response);
       signal.throwIfAborted();
-      if (cacheable) {
-        if (responseCache.size >= CACHE_LIMIT && !responseCache.has(cacheKey)) {
-          responseCache.delete(responseCache.keys().next().value);
-        }
-        responseCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL });
-      }
       return { ok: true, data };
     } catch (error) {
       if (callerSignal?.aborted) return { ok: false, message: 'Niblet API request was cancelled.' };
       if (timedOut) return { ok: false, message: 'Niblet API request timed out after 15 seconds. No retry was attempted.' };
       if (error instanceof ApiError) return { ok: false, message: error.message };
-      return { ok: false, message: 'Niblet API could not be reached or its response could not be read. No retry was attempted.' };
+      return { ok: false, message: 'Niblet API could not be reached or its response could not be read. No retry was attempted.', retryInMs: null };
     } finally {
       clearTimeout(timer);
       controller.abort();
