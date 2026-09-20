@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
-    "@pymodel/niblet-contract": "0.1.0",
+    "@pymodel/niblet-contract": "0.1.1",
     "zod": "4.6.5"
   }
 }
