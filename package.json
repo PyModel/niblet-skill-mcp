@@ -43,7 +43,8 @@
   },
   "scripts": {
     "start": "node src/index.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "verify:package": "npm pack --dry-run --json > pack.json && node scripts/verify-package.mjs pack.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
