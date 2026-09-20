@@ -43,7 +43,9 @@ npx skills add PyModel/niblet-skill-mcp --skill niblet -y
 Or copy it yourself, keeping `references/`, `agents/`, `LICENSE`, and `NOTICE` alongside it:
 
 ```sh
-cp -r skill/niblet ~/.claude/skills/niblet
+cp -r skill/niblet ~/.claude/skills/niblet   # Claude Code
+cp -r skill/niblet ~/.pi/agent/skills/niblet # Pi (its skills CLI has no -g for this target yet)
+cp -r skill/niblet ~/.agents/skills/niblet   # agents that read ~/.agents/skills
 ```
 
 Then ask for it by name:
