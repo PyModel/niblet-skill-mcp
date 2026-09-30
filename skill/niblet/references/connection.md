@@ -95,7 +95,7 @@ Example tool arguments:
 }
 ```
 
-Images arrive as MCP image content, fetched only from the configured media origin (`https://media.niblet.com` by default, or `NIBLET_MEDIA_ORIGIN`) and the API origin, without the token. A URL on any other host is never fetched. An image that fails, redirects, is not an image type, or exceeds 2 MiB is skipped and the text reference stands alone; text-only output is not visual inspection.
+Images arrive as MCP image content, fetched only from the configured media origin (`https://media.niblet.com` by default, or `NIBLET_MEDIA_ORIGIN`) and the API origin, without the token, or from `https://www.niblet.com/media/`, which requires the token and is the only place it is sent. A URL on any other host or path is never fetched. An image that fails, redirects, is not an image type, or exceeds 2 MiB is skipped and the text reference stands alone; text-only output is not visual inspection.
 
 ### Local failure boundaries
 

@@ -471,6 +471,27 @@ test('images are fetched only from allowed origins, unauthenticated, and never f
   }
 });
 
+test('gated site media gets the token, and only that origin and path does', async (t) => {
+  const attempts = [];
+  const client = await connect(t, { token: TOKEN, fetch: async (url, options) => {
+    attempts.push({ href: url.href, auth: options?.headers?.Authorization });
+    if (url.pathname === '/v1/search') {
+      return Response.json({ results: [
+        ref({ id: 'a', thumbUrl: 'https://www.niblet.com/media/thumb/a/1.webp' }),
+        ref({ id: 'b', thumbUrl: 'https://www.niblet.com/account/a.webp' }),
+        ref({ id: 'c', thumbUrl: `${MEDIA_ORIGIN}/thumb/c.webp` }),
+      ] });
+    }
+    return imageResponse();
+  } });
+  const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings', limit: 3 } });
+  assert.equal(result.content.filter((item) => item.type === 'image').length, 2);
+  assert.deepEqual(attempts.slice(1), [
+    { href: 'https://www.niblet.com/media/thumb/a/1.webp', auth: `Bearer ${TOKEN}` },
+    { href: `${MEDIA_ORIGIN}/thumb/c.webp`, auth: undefined },
+  ], 'a site path outside /media is never fetched, and the legacy media host never sees the token');
+});
+
 test('a failed image fetch degrades to text instead of failing the call', async (t) => {
   const client = await connect(t, { token: TOKEN, fetch: async (url) => {
     if (url.pathname === '/v1/search') return Response.json({ results: [ref()] });

@@ -19,6 +19,10 @@ import pkg from '../package.json' with { type: 'json' };
 
 const DEFAULT_API_ORIGIN = 'https://api.niblet.com';
 const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
+// Catalogue media behind the paywall: the site serves it under /media and answers only a
+// caller with access, so this one origin and path prefix get the API token and nothing else does.
+const GATED_MEDIA_ORIGIN = 'https://www.niblet.com';
+const GATED_MEDIA_PREFIX = '/media/';
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
 const REQUEST_TIMEOUT = 15_000;
 // Catalogue reads are GETs with no side effect, so repeating one is safe. This client is the
@@ -517,7 +521,8 @@ export function createServer({
 
   /**
    * Fetch one catalogue image for inline inspection. Only URLs on the configured media or API
-   * origins are fetched, so a value returned by the catalogue cannot steer this server at an
+   * origins (sent without the token) or under the site's gated /media path (sent with it) are
+   * fetched, so a value returned by the catalogue cannot steer this server, or the token, at an
    * arbitrary host. Any failure skips the image rather than failing the tool call.
    */
   async function fetchImage(rawUrl, callerSignal) {
@@ -528,14 +533,17 @@ export function createServer({
     } catch {
       return null;
     }
-    if (!MEDIA_ORIGINS.has(url.origin)) return null;
+    const gated = url.origin === GATED_MEDIA_ORIGIN && url.pathname.startsWith(GATED_MEDIA_PREFIX);
+    if (!gated && !MEDIA_ORIGINS.has(url.origin)) return null;
+    if (gated && !token) return null;
+    const headers = gated ? { Accept: 'image/*', Authorization: `Bearer ${token}` } : { Accept: 'image/*' };
 
     const controller = new AbortController();
     const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     let response;
     try {
-      response = await fetchImpl(url, { method: 'GET', headers: { Accept: 'image/*' }, credentials: 'omit', redirect: 'manual', signal });
+      response = await fetchImpl(url, { method: 'GET', headers, credentials: 'omit', redirect: 'manual', signal });
       signal.throwIfAborted();
       if (response.redirected || !response.ok) return null;
       const mimeType = (response.headers.get('content-type') ?? 'image/webp').split(';')[0].trim();
