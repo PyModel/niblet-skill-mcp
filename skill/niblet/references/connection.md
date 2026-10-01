@@ -26,7 +26,7 @@ Use that absolute `www` URL — apex `niblet.com` redirects to `www`, a bare `/a
 
 ## Local stdio MCP package
 
-Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account) authorizes both `/v1` and hosted `/mcp`.
+Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account) authorizes both `/v1` and hosted `/mcp`; hosted `/mcp` also accepts an OAuth sign-in (see the remote service below).
 
 The shortest local configuration uses the published package:
 
@@ -109,17 +109,22 @@ For a host that supports the deployed remote HTTP MCP transport, the endpoint is
 
 Configure it through that host's supported remote connection and authentication mechanism. Do not substitute this URL into a stdio `command` field, and do not assume that a host can connect to remote MCP merely because it supports local processes.
 
+It accepts two credentials. A host that can send a header uses an account key: `Authorization: Bearer niblet_at_…`. A host that cannot send one, such as Claude Desktop, claude.ai, or Claude mobile, signs in with OAuth instead: Settings → Connectors → Add custom connector → `https://api.niblet.com/mcp`, then sign in to Niblet and allow access. No key is involved, and the person can revoke the grant under Connected apps at `https://www.niblet.com/account`. An OAuth sign-in that is rejected or revoked is an authentication failure for the person to fix by reconnecting, not an empty catalogue.
+
 This existing remote service exposes **only**:
 
 - `find_ui_references`
 - `find_ui_materials`
 - `get_design_reference`
+- `get_ui_component`
 
-Its schemas match the local adapter. Both require `query` (1–240 characters), accept `limit` from 1–3 with default 2, and accept optional `platform` (`ios` or `web`). Materials also require `kind` (`font`, `icon`, `animated_icon`, or `pack`); neither deployment supplies packs.
+`get_ui_component` and the materials kind `component` are remote-only; the local adapter does not offer them. Search `find_ui_materials` with `kind: "component"`, then pass a returned `name` as `get_ui_component`'s required `id` (lowercase letters, digits, `-`, `_`; up to 160 characters). It returns a shadcn registry item: `files` (each with `target` path and `content`), npm `dependencies`, `registryDependencies` (unprefixed names are shadcn/ui items; `@niblet/<id>` names are further `get_ui_component` ids), `license`, and `attribution`. Adapt the source to the product's own tokens and keep the license notice with the code. An unknown id returns `component: null`, not an error.
+
+The shared tools' schemas match the local adapter. Both require `query` (1–240 characters), accept `limit` from 1–3 with default 2, and accept optional `platform` (`ios` or `web`). Materials also require `kind` (`font`, `icon`, `animated_icon`, or `pack`); neither deployment supplies packs.
 
 For exact reference inspection, both deployments accept `selectedIds`: one to three screen IDs, each 1–160 characters; `query` is still required. Both attempt to include images, and an individual image fetch can fail. Do not claim visual inspection from text-only results.
 
-All three schemas accept `clientSkillVersion` (1–64 characters) and default it to the current bundled skill version. `get_design_reference` accepts a unique, nonempty `sections` subset of `overview`, `colors`, `typography`, `components`, and `provenance`. The materials schema also accepts `selectedId` (1–160 characters) and `userConfirmed: true`; those two fields do not establish asset installation, pack access, or extra automation. Read the connected tool's actual schema before calling it.
+All four schemas accept `clientSkillVersion` (1–64 characters) and default it to the current bundled skill version. `get_design_reference` accepts a unique, nonempty `sections` subset of `overview`, `colors`, `typography`, `components`, and `provenance`. The materials schema also accepts `selectedId` (1–160 characters) and `userConfirmed: true`; those two fields do not establish asset installation, pack access, or extra automation. Read the connected tool's actual schema before calling it.
 
 The remote service does not promise the `niblet://skill` resource. Neither deployment offers `review_ui` or any hosted UI review service, nor catalogue-detail tools such as app, journey, or statistics listings.
 

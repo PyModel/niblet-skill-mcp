@@ -38,9 +38,27 @@ A title, summary, or URL is not proof of rendered appearance. If an image cannot
 
 ## Materials
 
-Use `find_ui_materials` for a named role that existing assets cannot meet: a readable typeface, a specific icon family, or purposeful animated feedback. The accepted `kind` values are `font`, `icon`, `animated_icon`, and `pack`; acceptance of a value does not guarantee catalogue availability. The existing remote service explicitly does not supply packs.
+Use `find_ui_materials` for a named role that existing assets cannot meet: a readable typeface, a specific icon family, or purposeful animated feedback. The accepted `kind` values are `font`, `icon`, `animated_icon`, `component`, and `pack`; acceptance of a value does not guarantee catalogue availability. The existing remote service explicitly does not supply packs, and only it supplies components.
 
 Check the returned source, license, redistribution/embedding terms, and attribution requirements before adding an asset. A licence label in a search result is a lead, not a blanket grant of permission. Prefer the existing product asset system. Do not replace an established typeface or icon family during unrelated refinement, and do not claim a downloaded or installed asset unless that action actually happened.
+
+## Components
+
+The hosted service also holds React component source (shadcn registry items, Tailwind). It is a materials source, not a reference: it answers "how do I build this control", while `find_ui_references` answers "how should this screen behave". Use it only when all of these hold:
+
+- the product is React, and Tailwind or shadcn/ui is already in use or acceptable to add;
+- the product has no component for the role, and composing existing ones would not cover it;
+- the need is a concrete role ("date range picker", "empty state with a retry action"), not inspiration.
+
+Pick the cleanest candidate:
+
+1. Search `find_ui_materials` with `kind: "component"` and the role. Each result shows its category and the npm and registry packages it pulls in, and equally relevant results come back leanest first.
+2. Prefer, in order: no new npm packages; packages the product already depends on; a primitive over a styled block; a plain variant over a `-form`, `-customize`, or motion variant, unless the product already uses that form or motion library.
+3. Reject a candidate that brings a second icon set, motion library, form library, or date library beside the one the product already has.
+4. Call `get_ui_component` for the one chosen candidate only. Do not fetch several to compare source.
+5. Adapt it: replace its colors, radii, spacing, and type with the product's tokens, rename it to the product's conventions, delete unused variants, and keep its license and attribution with the code.
+
+When the open question is behavior or layout rather than implementation, pair the two: one `find_ui_references` search to settle how the screen should work, then at most one component that builds it. In the handoff, name the reference IDs and the component used, and say in one line why it was chosen over the others (for example, "no new packages; the motion variant would add framer-motion").
 
 ## Evidence boundaries
 

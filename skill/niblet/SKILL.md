@@ -3,7 +3,7 @@ name: niblet
 description: Keep interface work anchored to the product it belongs to instead of a generic template. Sets a short design contract, builds from the components and tokens already in the codebase, covers the states a surface can actually reach, and closes by looking at the rendered result. Use when building, reworking, or assessing a web or native interface. Trigger with "niblet", "niblet skill", "niblet designer ui", or "niblet review". Skip backend, CLI, data, and infrastructure work, prose-only tasks, and questions the product's own design system already settles.
 license: Apache-2.0
 metadata:
-  version: '0.4.5'
+  version: '0.4.6'
   author: 'Mohamed Elkholy (elkaix)'
   organization: 'PyModel'
   source: 'https://github.com/PyModel/niblet-skill-mcp'
@@ -61,7 +61,7 @@ Make the product's task recognizable from the rendered screen, not just its logo
 - Use real objects, labels, and content density. Metrics need a real source; empty states explain what is missing and what to do next. Do not fill a dashboard with invented activity.
 - Give the primary action a clear consequence and dominant position; subordinate secondary actions without hiding essential navigation.
 - Group content by the user's decision or workflow. A grid is appropriate for comparing screens or products, not a default container for unrelated facts.
-- Reuse semantic surface, text, border, action, and status tokens. Add a primitive only when existing components cannot express the task; record why in the contract.
+- Reuse semantic surface, text, border, action, and status tokens. Add a primitive only when existing components cannot express the task; record why in the contract. When a React product needs one it does not have, take the leanest library component that fits ([components](references/evidence.md#components)) and restyle it with the product's tokens rather than writing a generic one from memory.
 - Let useful content carry visual interest. New gradients, glow, glass, nested cards, oversized headings, and motion need a product or interaction purpose. Preserve established brand assets and effects during refinement rather than enforcing a universal ban.
 - Check the substitution test: if another product's name could replace this one without changing the content or structure, identify the missing product-specific decision and correct it.
 

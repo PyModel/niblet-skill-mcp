@@ -63,6 +63,8 @@ claude mcp add --transport http niblet https://api.niblet.com/mcp \
   --header "Authorization: Bearer $NIBLET_ACCOUNT_KEY"
 ```
 
+For Claude Desktop, claude.ai, or Claude mobile, which cannot send a key header, add hosted MCP as a custom connector and sign in instead: **Settings → Connectors → Add custom connector →** `https://api.niblet.com/mcp`, then sign in to Niblet and allow access. No key is involved; revoke the grant any time under Connected apps at [niblet.com/account](https://www.niblet.com/account). Step-by-step screenshots: [niblet.com/docs#claude](https://www.niblet.com/docs#claude).
+
 For the token-free bundled skill resources, `niblet_help`, and `niblet_status`, run the local stdio adapter:
 
 ```sh
