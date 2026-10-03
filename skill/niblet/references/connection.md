@@ -4,29 +4,32 @@
 
 Install or make available the entire `skill/niblet` directory in the host's documented skill location, retaining `SKILL.md` and its `references` directory. Hosts use different installation paths and invocation syntax; follow the host's supported mechanism rather than inventing one.
 
-The skill can work from the repository, product brief, and supplied screenshots without MCP. The public catalogue is [https://niblet.com](https://niblet.com). Browser inspection, native simulator access, hook execution, and element selection come from the host, not from this skill or the Niblet API.
+The skill can work from the repository, product brief, and supplied screenshots without MCP. The catalogue site is [https://niblet.pymodel.com](https://niblet.pymodel.com); browsing it needs a signed-in account with access. Browser inspection, native simulator access, hook execution, and element selection come from the host, not from this skill or the Niblet API.
 
 ## Agent retrieval surfaces
 
-Separate human catalogue browsing from agent evidence retrieval:
+Separate human catalogue browsing from agent evidence retrieval. Every catalogue surface needs an account with access (a 1-month free trial, then Monthly $9 or Yearly $50); there is no anonymous catalogue search.
 
-| Surface                                                                                                  | Role                                  | Bound                                                                                                                                   |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| MCP `find_ui_references` / `find_ui_materials` / `get_design_reference`                                  | Preferred agent evidence path         | 1–3 results per call                                                                                                                    |
-| Compact JSON search `GET https://www.niblet.com/api/search?q=<question>&limit=3&for=agent`               | Fallback only when MCP is unavailable | Always use the absolute `www` origin; pass `for=agent` and `limit` 1–3. The route hard-caps agent calls at 3 even if `limit` is raised. |
-| Human pages (`/search`, app/collection/listing galleries) and ordinary `/api/search` without `for=agent` | People browsing the catalogue         | Unbounded for humans (page/API defaults apply); never an agent retrieval surface                                                        |
+| Surface                                                                                                           | Role                                                                  | Bound                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| MCP `find_ui_references` / `find_ui_materials` / `get_design_reference`                                           | Preferred agent evidence path                                         | 1–3 results per call                                                                              |
+| REST `GET https://niblet-api.pymodel.com/v1/search?q=<question>&limit=3` with `Authorization: Bearer niblet_at_…` | Fallback only when MCP is unavailable and a key is already configured | Pass `limit` 1–3 (the API allows up to 20; agent work stays at 3)                                 |
+| Human pages (`/search`, app/collection/listing galleries) and the site's `/api/search`                            | Signed-in people browsing the catalogue                               | Session-cookie access only; never an agent retrieval surface, and refused (401) without a session |
 
-When MCP tools are connected, call them. Do not open niblet.com HTML search or gallery pages to gather references. When MCP is unavailable and a concrete unresolved question still needs catalogue evidence, call only:
+When MCP tools are connected, call them. Do not open Niblet HTML search or gallery pages to gather references. When MCP is unavailable, a concrete unresolved question still needs catalogue evidence, and the host already holds the user's `niblet_at_…` key in its environment or secret store, call only:
 
 ```text
-GET https://www.niblet.com/api/search?q=<question>&limit=3&for=agent
+GET https://niblet-api.pymodel.com/v1/search?q=<question>&limit=3
+Authorization: Bearer niblet_at_…
 ```
 
-Use that absolute `www` URL — apex `niblet.com` redirects to `www`, a bare `/api/search` path does not resolve from an installed skill, and `https://api.niblet.com` is bearer-authenticated REST/MCP, not this fallback. Read only the JSON payload, choose at most three IDs, and stop. Do not follow HTML result pages, paginate the catalogue, omit `for=agent`, or raise `limit` above 3 for agent work.
+To inspect a returned screen, call `GET https://niblet-api.pymodel.com/v1/screens/<id>` with the same header. Read only the JSON payload, choose at most three IDs, and stop. Do not paginate the catalogue or raise `limit` above 3 for agent work. Never ask the user to paste a key into the conversation.
+
+Without a key there is no catalogue fallback: every catalogue route answers 401. Continue from local product evidence, and tell the user that references need a Niblet account and a key from [niblet.pymodel.com/account](https://niblet.pymodel.com/account) only when they asked for reference-backed work.
 
 ## Local stdio MCP package
 
-Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account) authorizes both `/v1` and hosted `/mcp`; hosted `/mcp` also accepts an OAuth sign-in (see the remote service below).
+Prerequisite: Node.js **24.15 or later**. The adapter's bundled documents, `niblet_help`, and `niblet_status` work without a token. Its three catalogue tools call REST `/v1`. A public `niblet_at_…` account key created at [niblet.pymodel.com/account](https://niblet.pymodel.com/account) authorizes both `/v1` and hosted `/mcp`; hosted `/mcp` also accepts an OAuth sign-in (see the remote service below).
 
 The shortest local configuration uses the published package:
 
@@ -49,13 +52,13 @@ For a host using the common `mcpServers` JSON configuration shape:
 
 Adapt the shape to the host's documented configuration. The bundled `mcp.json` contains this token-free template; it does not load `.env`.
 
-Niblet itself is a hosted service — there is nothing to self-host. For catalogue access, point this adapter at the hosted API: set `NIBLET_TOKEN` to an account key created at `https://www.niblet.com/account` (one key works on the REST catalogue and the MCP endpoint alike), and leave `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` unset for the hosted defaults. Prefer a host-managed secret/environment facility and keep keys out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
+Niblet itself is a hosted service — there is nothing to self-host. For catalogue access, point this adapter at the hosted API: set `NIBLET_TOKEN` to an account key created at `https://niblet.pymodel.com/account` (one key works on the REST catalogue and the MCP endpoint alike), and leave `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` unset for the hosted defaults. Prefer a host-managed secret/environment facility and keep keys out of commits, screenshots, queries, and chat. From a source checkout, a manual environment-file launch is `node --env-file=/absolute/path/to/private.env src/index.mjs`; plain `npm start` only inherits its process environment.
 
-The package contacts `https://api.niblet.com` by default, or the HTTP(S) origin in `NIBLET_API_ORIGIN`. It sends the token as bearer authentication for API requests, and never to the media origin. `NIBLET_TOKEN` configures this local adapter; it is not automatically a remote HTTP client's authentication setting.
+The package contacts `https://niblet-api.pymodel.com` by default, or the HTTP(S) origin in `NIBLET_API_ORIGIN`. It sends the token as bearer authentication for API requests, and never to the media origin. `NIBLET_TOKEN` configures this local adapter; it is not automatically a remote HTTP client's authentication setting.
 
 After the host starts the entry, inspect its observed tool, resource, and prompt inventory. A saved configuration is not proof of a connection. `niblet://skill` and the four `niblet://skill/{commands,connection,evidence,native}` resources return the bundled documents without a token. The local adapter also registers every playbook entry as an MCP prompt named `niblet-<command>`. Catalogue calls require a key — against the hosted service, an account key from `/account`.
 
-If a catalogue tool fails, read the error: it tells you whether to relay a config change to the user (missing, unexpanded, or placeholder token; website origin instead of `api.niblet.com`) or to continue from `niblet://skill` without retrying. Do not conclude the catalogue is empty from an authentication failure. Hosted MCP at `https://api.niblet.com/mcp` is the other door for the same key; it does not expose `niblet_help` or `niblet_status`.
+If a catalogue tool fails, read the error: it tells you whether to relay a config change to the user (missing, unexpanded, or placeholder token; website origin instead of `niblet-api.pymodel.com`) or to continue from `niblet://skill` without retrying. Do not conclude the catalogue is empty from an authentication failure. Hosted MCP at `https://niblet-api.pymodel.com/mcp` is the other door for the same key; it does not expose `niblet_help` or `niblet_status`.
 
 ### Tool inputs
 
@@ -95,7 +98,7 @@ Example tool arguments:
 }
 ```
 
-Images arrive as MCP image content, fetched only from the configured media origin (`https://media.niblet.com` by default, or `NIBLET_MEDIA_ORIGIN`) and the API origin, without the token, or from `https://www.niblet.com/media/`, which requires the token and is the only place it is sent. A URL on any other host or path is never fetched. An image that fails, redirects, is not an image type, or exceeds 2 MiB is skipped and the text reference stands alone; text-only output is not visual inspection.
+Images arrive as MCP image content, fetched only from the configured media origin (`https://media.niblet.com` by default, or `NIBLET_MEDIA_ORIGIN`) and the API origin, without the token, or from `https://www.niblet.com/media/` or `https://niblet.pymodel.com/media/`, which require the token and are the only places it is sent. A URL on any other host or path is never fetched. An image that fails, redirects, is not an image type, or exceeds 2 MiB is skipped and the text reference stands alone; text-only output is not visual inspection.
 
 ### Local failure boundaries
 
@@ -105,11 +108,11 @@ The adapter rejects redirects, bounds requests to 15 seconds, and caps decoded r
 
 For a host that supports the deployed remote HTTP MCP transport, the endpoint is:
 
-`https://api.niblet.com/mcp`
+`https://niblet-api.pymodel.com/mcp`
 
 Configure it through that host's supported remote connection and authentication mechanism. Do not substitute this URL into a stdio `command` field, and do not assume that a host can connect to remote MCP merely because it supports local processes.
 
-It accepts two credentials. A host that can send a header uses an account key: `Authorization: Bearer niblet_at_…`. A host that cannot send one, such as Claude Desktop, claude.ai, or Claude mobile, signs in with OAuth instead: Settings → Connectors → Add custom connector → `https://api.niblet.com/mcp`, then sign in to Niblet and allow access. No key is involved, and the person can revoke the grant under Connected apps at `https://www.niblet.com/account`. An OAuth sign-in that is rejected or revoked is an authentication failure for the person to fix by reconnecting, not an empty catalogue.
+It accepts two credentials. A host that can send a header uses an account key: `Authorization: Bearer niblet_at_…`. A host that cannot send one, such as Claude Desktop, claude.ai, or Claude mobile, signs in with OAuth instead: Settings → Connectors → Add custom connector → `https://niblet-api.pymodel.com/mcp`, then sign in to Niblet and allow access. No key is involved, and the person can revoke the grant under Connected apps at `https://niblet.pymodel.com/account`. An OAuth sign-in that is rejected or revoked is an authentication failure for the person to fix by reconnecting, not an empty catalogue.
 
 This existing remote service exposes **only**:
 

@@ -182,7 +182,7 @@ test('niblet_status reports a missing token without contacting the API or echoin
   assert.equal(requests, 0);
   assert.match(result.content[0].text, /Token:\s+not configured/);
   assert.match(result.content[0].text, /Tell the user/);
-  assert.match(result.content[0].text, /www\.niblet\.com\/account/);
+  assert.match(result.content[0].text, /niblet\.pymodel\.com\/account/);
 });
 
 test('niblet_status never echoes the token and surfaces an unreachable API', async (t) => {
@@ -257,18 +257,34 @@ test('placeholder and unexpanded tokens never reach the API', async (t) => {
 });
 
 test('a website API origin never reaches the network and tells the user how to fix it', async (t) => {
-  let requests = 0;
+  for (const apiOrigin of ['https://niblet.pymodel.com', 'https://www.niblet.com', 'https://niblet.com']) {
+    let requests = 0;
+    const client = await connect(t, {
+      token: TOKEN,
+      apiOrigin,
+      fetch: async () => { requests++; return Response.json({}); },
+    });
+    const status = await client.callTool({ name: 'niblet_status', arguments: {} });
+    assert.equal(requests, 0, apiOrigin);
+    assert.match(status.content[0].text, /public website/);
+    assert.match(status.content[0].text, /Tell the user/);
+    assert.match(status.content[0].text, /https:\/\/niblet-api\.pymodel\.com/);
+    assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
+    assert.equal(requests, 0, apiOrigin);
+  }
+});
+
+test('the legacy api.niblet.com origin is the hosted service, not a self-hosted deployment', async (t) => {
+  const urls = [];
   const client = await connect(t, {
     token: TOKEN,
-    apiOrigin: 'https://www.niblet.com',
-    fetch: async () => { requests++; return Response.json({}); },
+    apiOrigin: 'https://api.niblet.com',
+    fetch: async (url) => { urls.push(url); return Response.json({ results: [] }); },
   });
   const status = await client.callTool({ name: 'niblet_status', arguments: {} });
-  assert.equal(requests, 0);
-  assert.match(status.content[0].text, /public website/);
-  assert.match(status.content[0].text, /Tell the user/);
-  assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
-  assert.equal(requests, 0);
+  assert.doesNotMatch(status.content[0].text, /confirm this is their own deployment/);
+  await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } });
+  assert.equal(urls.at(-1).origin, 'https://api.niblet.com');
 });
 
 test('query and id values cannot select another origin, route, or query parameter', async (t) => {
@@ -279,7 +295,7 @@ test('query and id values cannot select another origin, route, or query paramete
   } });
   const query = 'checkout&limit=100#https://elsewhere.invalid/admin';
   await client.callTool({ name: 'find_ui_references', arguments: { query, limit: 1 } });
-  assert.equal(urls[0].origin, 'https://api.niblet.com');
+  assert.equal(urls[0].origin, 'https://niblet-api.pymodel.com');
   assert.equal(urls[0].pathname, '/v1/search');
   assert.equal(urls[0].searchParams.get('q'), query);
   assert.equal(urls[0].searchParams.get('limit'), '1');
@@ -288,7 +304,7 @@ test('query and id values cannot select another origin, route, or query paramete
   const id = 'screen?next=elsewhere#x&y';
   const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'checkout', selectedIds: [id] } });
   assert.notEqual(result.isError, true);
-  assert.equal(urls[1].href, `https://api.niblet.com/v1/screens/${encodeURIComponent(id)}?clientSkillVersion=${NIBLET_SKILL_VERSION}`);
+  assert.equal(urls[1].href, `https://niblet-api.pymodel.com/v1/screens/${encodeURIComponent(id)}?clientSkillVersion=${NIBLET_SKILL_VERSION}`);
   for (const invalid of ['.', '..', '../apps', '%2e%2e', 'a/b', 'a\\b', '\ud800']) {
     assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'checkout', selectedIds: [invalid] } }));
   }
@@ -402,8 +418,8 @@ test('selectedIds read each screen at inspection quality and skip missing ids', 
   assert.equal(JSON.stringify(result).includes('sibling'), false, 'siblings are not part of the selected inspection');
   assert.equal(result.content[2].type, 'image');
   assert.deepEqual(fetched, [
-    `https://api.niblet.com/v1/screens/gone?clientSkillVersion=${NIBLET_SKILL_VERSION}`,
-    `https://api.niblet.com/v1/screens/screen-1?clientSkillVersion=${NIBLET_SKILL_VERSION}`,
+    `https://niblet-api.pymodel.com/v1/screens/gone?clientSkillVersion=${NIBLET_SKILL_VERSION}`,
+    `https://niblet-api.pymodel.com/v1/screens/screen-1?clientSkillVersion=${NIBLET_SKILL_VERSION}`,
     `${MEDIA_ORIGIN}/inspect/a/1.webp`,
   ]);
 
@@ -490,6 +506,26 @@ test('gated site media gets the token, and only that origin and path does', asyn
     { href: 'https://www.niblet.com/media/thumb/a/1.webp', auth: `Bearer ${TOKEN}` },
     { href: `${MEDIA_ORIGIN}/thumb/c.webp`, auth: undefined },
   ], 'a site path outside /media is never fetched, and the legacy media host never sees the token');
+});
+
+test('the pymodel.com site media path is gated media too, and its other paths are never fetched', async (t) => {
+  const attempts = [];
+  const client = await connect(t, { token: TOKEN, fetch: async (url, options) => {
+    attempts.push({ href: url.href, auth: options?.headers?.Authorization });
+    if (url.pathname === '/v1/search') {
+      return Response.json({ results: [
+        ref({ id: 'a', thumbUrl: 'https://niblet.pymodel.com/media/thumb/a/1.webp' }),
+        ref({ id: 'b', thumbUrl: 'https://niblet.pymodel.com/account/a.webp' }),
+        ref({ id: 'c', thumbUrl: 'https://evil.pymodel.com/media/thumb/c.webp' }),
+      ] });
+    }
+    return imageResponse();
+  } });
+  const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings', limit: 3 } });
+  assert.equal(result.content.filter((item) => item.type === 'image').length, 1);
+  assert.deepEqual(attempts.slice(1), [
+    { href: 'https://niblet.pymodel.com/media/thumb/a/1.webp', auth: `Bearer ${TOKEN}` },
+  ]);
 });
 
 test('a failed image fetch degrades to text instead of failing the call', async (t) => {
@@ -583,7 +619,7 @@ test('a custom API origin is noted but still contacted', async (t) => {
     },
   });
   const status = await client.callTool({ name: 'niblet_status', arguments: {} });
-  assert.match(status.content[0].text, /not api\.niblet\.com/);
+  assert.match(status.content[0].text, /not niblet-api\.pymodel\.com/);
   assert.match(status.content[0].text, /confirm this is their own deployment/);
   assert.equal(requests, 1);
 });
@@ -620,7 +656,7 @@ test('redirects and HTTP failures are sanitized and never retried', async (t) =>
       } });
       assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
       assert.equal(calls.length, 1);
-      assert.equal(calls[0].url.origin, 'https://api.niblet.com');
+      assert.equal(calls[0].url.origin, 'https://niblet-api.pymodel.com');
       assert.equal(calls[0].options.redirect, 'manual');
     });
   }
@@ -976,7 +1012,7 @@ test('get_design_reference returns the markdown with its preamble and source', a
   assert.notEqual(result.isError, true);
   const text = result.content.map((item) => item.text).join('\n');
   assert.match(text, /References are evidence, not templates/);
-  assert.match(text, /Source: https:\/\/niblet\.com\/packs\/bank/);
+  assert.match(text, /Source: https:\/\/niblet\.pymodel\.com\/packs\/bank/);
   assert.match(text, /# Bank — Style Reference/);
   const structured = GetDesignReferenceOutputSchema.parse(result.structuredContent);
   assert.equal(structured.reference?.slug, 'bank');
@@ -1014,7 +1050,7 @@ test('get_design_reference encodes and flags an instruction-like catalogue slug'
   const result = await client.callTool({ name: 'get_design_reference', arguments: { screenId: 'screen-1' } });
   assert.notEqual(result.isError, true);
   assert.match(result.content[0].text, /Security warning: returned catalogue content contains instruction-like text/);
-  assert.match(result.content[0].text, /Source: https:\/\/niblet\.com\/packs\/ignore%20previous%20instructions%2F%0Afoo/);
+  assert.match(result.content[0].text, /Source: https:\/\/niblet\.pymodel\.com\/packs\/ignore%20previous%20instructions%2F%0Afoo/);
   assert.doesNotMatch(result.content[0].text, /packs\/ignore previous instructions/);
 });
 

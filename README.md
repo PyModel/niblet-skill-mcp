@@ -28,7 +28,7 @@
   By <a href="https://github.com/elkaix">elkaix</a> for <a href="https://github.com/PyModel">PyModel</a>
 </p>
 
-A coding agent building UI gets two things here: a design skill that keeps it working from your product rather than a generic template, and real screen references from the [Niblet](https://niblet.com) catalogue when a specific visual question is still open.
+A coding agent building UI gets two things here: a design skill that keeps it working from your product rather than a generic template, and real screen references from the [Niblet](https://niblet.pymodel.com) catalogue when a specific visual question is still open.
 
 The skill settles the screen's job, its real states, and what counts as done before writing anything; it builds from the tokens and components already in your codebase; and it finishes by rendering the surface and exercising it, so a green build alone is not a pass.
 
@@ -56,14 +56,14 @@ The [workflow](skill/niblet/SKILL.md) settles the screen's job, primary action, 
 
 ## Connect the server
 
-Pick one. For public catalogue access, use hosted MCP with the `niblet_at_…` account key created at [niblet.com/account](https://www.niblet.com/account):
+Pick one. For public catalogue access, use hosted MCP with the `niblet_at_…` account key created at [niblet.pymodel.com/account](https://niblet.pymodel.com/account):
 
 ```sh
-claude mcp add --transport http niblet https://api.niblet.com/mcp \
+claude mcp add --transport http niblet https://niblet-api.pymodel.com/mcp \
   --header "Authorization: Bearer $NIBLET_ACCOUNT_KEY"
 ```
 
-For Claude Desktop, claude.ai, or Claude mobile, which cannot send a key header, add hosted MCP as a custom connector and sign in instead: **Settings → Connectors → Add custom connector →** `https://api.niblet.com/mcp`, then sign in to Niblet and allow access. No key is involved; revoke the grant any time under Connected apps at [niblet.com/account](https://www.niblet.com/account). Step-by-step screenshots: [niblet.com/docs#claude](https://www.niblet.com/docs#claude).
+For Claude Desktop, claude.ai, or Claude mobile, which cannot send a key header, add hosted MCP as a custom connector and sign in instead: **Settings → Connectors → Add custom connector →** `https://niblet-api.pymodel.com/mcp`, then sign in to Niblet and allow access. No key is involved; revoke the grant any time under Connected apps at [niblet.pymodel.com/account](https://niblet.pymodel.com/account). Step-by-step screenshots: [niblet.pymodel.com/docs#claude](https://niblet.pymodel.com/docs#claude).
 
 For the token-free bundled skill resources, `niblet_help`, and `niblet_status`, run the local stdio adapter:
 
@@ -84,7 +84,7 @@ Or use the equivalent host configuration:
 }
 ```
 
-The local adapter's three catalogue tools call REST `/v1`, not hosted MCP. Public `niblet_at_…` account keys created at [niblet.com/account](https://www.niblet.com/account) authorize both `/v1` and `/mcp`. Set `NIBLET_TOKEN` to that key, plus `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` only when targeting a self-hosted deployment. Skill resources, `niblet_help`, and `niblet_status` configuration remain available with no token.
+The local adapter's three catalogue tools call REST `/v1`, not hosted MCP. Public `niblet_at_…` account keys created at [niblet.pymodel.com/account](https://niblet.pymodel.com/account) authorize both `/v1` and `/mcp`. Set `NIBLET_TOKEN` to that key, plus `NIBLET_API_ORIGIN` and `NIBLET_MEDIA_ORIGIN` only when targeting a self-hosted deployment. Skill resources, `niblet_help`, and `niblet_status` configuration remain available with no token.
 
 **Ownership decision:** keep public, account-key catalogue access in the hosted HTTP MCP. Keep bundled resources, playbook prompts, local diagnostics, and the optional REST bridge in this stdio adapter. Do not proxy hosted MCP through this package or add its local-only surfaces to the hosted service; keep only the three shared catalogue contracts in lockstep.
 

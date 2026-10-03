@@ -17,11 +17,17 @@ import { SKILL_DOCS, parseCommands, parseModes, readSkillDoc, readSkillDocSync, 
 // The advertised server version is the package version; nothing else to keep in step.
 import pkg from '../package.json' with { type: 'json' };
 
-const DEFAULT_API_ORIGIN = 'https://api.niblet.com';
+const DEFAULT_API_ORIGIN = 'https://niblet-api.pymodel.com';
+// The niblet.com API host keeps serving every path after the 2026-10-03 move, so a configured
+// legacy origin is the hosted service, not someone's own deployment.
+const HOSTED_API_HOSTS = new Set(['niblet-api.pymodel.com', 'api.niblet.com']);
+const WEBSITE_HOSTS = new Set(['niblet.pymodel.com', 'niblet.com', 'www.niblet.com']);
 const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
 // Catalogue media behind the paywall: the site serves it under /media and answers only a
-// caller with access, so this one origin and path prefix get the API token and nothing else does.
-const GATED_MEDIA_ORIGIN = 'https://www.niblet.com';
+// caller with access, so these origins under this path prefix get the API token and nothing else
+// does. www.niblet.com is today's MEDIA_BASE_URL; niblet.pymodel.com serves the same media and
+// becomes the base once this release is what installed clients run.
+const GATED_MEDIA_ORIGINS = new Set(['https://www.niblet.com', 'https://niblet.pymodel.com']);
 const GATED_MEDIA_PREFIX = '/media/';
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
 const REQUEST_TIMEOUT = 15_000;
@@ -78,7 +84,7 @@ function authenticationFailed(token, apiOrigin) {
     'Tell the user: the token this MCP server is running with is not one the API at that origin accepts.',
     'Most often a NIBLET_TOKEN exported in the shell (e.g. ~/.zshrc, ~/.zshrc.local) overrides the one in the MCP .env file, because node --env-file never replaces a variable that is already set.',
     'Another cause is pointing this adapter at the wrong origin, or using a key from a different deployment.',
-    `To fix: create a key at https://www.niblet.com/account, set it as NIBLET_TOKEN (or connect the host to https://api.niblet.com/mcp with Authorization: Bearer niblet_at_…), make the shell export and the .env file agree (or remove the export), then restart the MCP server so it re-reads its environment.`,
+    `To fix: create a key at https://niblet.pymodel.com/account, set it as NIBLET_TOKEN (or connect the host to https://niblet-api.pymodel.com/mcp with Authorization: Bearer niblet_at_…), make the shell export and the .env file agree (or remove the export), then restart the MCP server so it re-reads its environment.`,
     'Run niblet_status to confirm the fix.',
     LOCAL_CONTINUE,
   ].join(' ');
@@ -108,7 +114,7 @@ function httpError(status, context = {}) {
     return [
       'Niblet API access denied (HTTP 403).',
       'Tell the user: this origin refused the request. That is often a WAF or a key that is not allowed on this path, not a missing catalogue.',
-      'To fix: use a niblet_at_ account key from https://www.niblet.com/account against https://api.niblet.com. Do not rotate the key unless the API said it was unrecognised.',
+      'To fix: use a niblet_at_ account key from https://niblet.pymodel.com/account against https://niblet-api.pymodel.com. Do not rotate the key unless the API said it was unrecognised.',
       LOCAL_CONTINUE,
     ].join(' ');
   }
@@ -128,9 +134,9 @@ function originNote(apiOrigin) {
   } catch {
     return null;
   }
-  if (host === 'api.niblet.com' || host === 'localhost' || host === '127.0.0.1') return null;
+  if (HOSTED_API_HOSTS.has(host) || host === 'localhost' || host === '127.0.0.1') return null;
   if (wrongOriginMessage(apiOrigin)) return null;
-  return `Niblet API origin is ${host}, not api.niblet.com. Tell the user: confirm this is their own deployment. Catalogue calls will use this origin.`;
+  return `Niblet API origin is ${host}, not niblet-api.pymodel.com. Tell the user: confirm this is their own deployment. Catalogue calls will use this origin.`;
 }
 
 function leaksCredential(text, token) {
@@ -170,11 +176,11 @@ function wrongOriginMessage(apiOrigin) {
   } catch {
     return null;
   }
-  if (host === 'niblet.com' || host === 'www.niblet.com') {
+  if (WEBSITE_HOSTS.has(host)) {
     return [
       `Niblet API origin is the public website (${host}), not the API.`,
-      'Tell the user: this MCP is pointed at niblet.com instead of api.niblet.com.',
-      'To fix: leave NIBLET_API_ORIGIN unset or set it to https://api.niblet.com, then restart this MCP server.',
+      'Tell the user: this MCP is pointed at the Niblet website instead of niblet-api.pymodel.com.',
+      'To fix: leave NIBLET_API_ORIGIN unset or set it to https://niblet-api.pymodel.com, then restart this MCP server.',
       LOCAL_CONTINUE,
     ].join(' ');
   }
@@ -182,7 +188,7 @@ function wrongOriginMessage(apiOrigin) {
     return [
       'Niblet API origin is the media host, not the API.',
       'Tell the user: NIBLET_API_ORIGIN is set to the media origin.',
-      'To fix: set NIBLET_API_ORIGIN to https://api.niblet.com or unset it, then restart this MCP server.',
+      'To fix: set NIBLET_API_ORIGIN to https://niblet-api.pymodel.com or unset it, then restart this MCP server.',
       LOCAL_CONTINUE,
     ].join(' ');
   }
@@ -339,7 +345,7 @@ export function createServer({
   const responseCache = new Map();
 
   const server = new McpServer(
-    { name: 'niblet', version: pkg.version, websiteUrl: 'https://niblet.com' },
+    { name: 'niblet', version: pkg.version, websiteUrl: 'https://niblet.pymodel.com' },
     { instructions: `Read niblet://skill for the Niblet design workflow; its reference documents are served alongside it (niblet://skill/commands, /connection, /evidence, /native). Call niblet_help to list the surface modes and every design command, or when asked what Niblet can do; call niblet_status to diagnose the connection before concluding the catalogue is empty. ${UNTRUSTED_DATA} After picking a web reference, call get_design_reference with its screenId for the recorded colors, typography, and components. Pass clientSkillVersion "${NIBLET_SKILL_VERSION}" on catalogue calls made for this bundled skill. The catalogue tools require NIBLET_TOKEN; the bundled skill, niblet_help, and niblet_status do not. This server only reads ${API_ORIGIN}/v1 and does not provide a remote UI review service.` },
   );
   const toolNames = [];
@@ -381,7 +387,7 @@ export function createServer({
       return [
         'NIBLET_TOKEN is required for Niblet catalogue tools.',
         'Tell the user: this local MCP has no key, so search cannot run.',
-        'To fix: create a key at https://www.niblet.com/account, set NIBLET_TOKEN in the MCP server environment, then restart this server; or connect the host to https://api.niblet.com/mcp with Authorization: Bearer niblet_at_….',
+        'To fix: create a key at https://niblet.pymodel.com/account, set NIBLET_TOKEN in the MCP server environment, then restart this server; or connect the host to https://niblet-api.pymodel.com/mcp with Authorization: Bearer niblet_at_….',
         LOCAL_CONTINUE,
       ].join(' ');
     }
@@ -397,7 +403,7 @@ export function createServer({
       return [
         'NIBLET_TOKEN is the setup placeholder, not a key.',
         'Tell the user: they still have the example text in the MCP config.',
-        'To fix: create a key at https://www.niblet.com/account, put it in the MCP server environment, then restart.',
+        'To fix: create a key at https://niblet.pymodel.com/account, put it in the MCP server environment, then restart.',
         LOCAL_CONTINUE,
       ].join(' ');
     }
@@ -405,7 +411,7 @@ export function createServer({
       return [
         'NIBLET_TOKEN is not a valid bearer token.',
         'Tell the user: the configured value is not a usable key.',
-        'To fix: paste a niblet_at_ key from https://www.niblet.com/account into the MCP server environment, then restart.',
+        'To fix: paste a niblet_at_ key from https://niblet.pymodel.com/account into the MCP server environment, then restart.',
         LOCAL_CONTINUE,
       ].join(' ');
     }
@@ -533,7 +539,7 @@ export function createServer({
     } catch {
       return null;
     }
-    const gated = url.origin === GATED_MEDIA_ORIGIN && url.pathname.startsWith(GATED_MEDIA_PREFIX);
+    const gated = GATED_MEDIA_ORIGINS.has(url.origin) && url.pathname.startsWith(GATED_MEDIA_PREFIX);
     if (!gated && !MEDIA_ORIGINS.has(url.origin)) return null;
     if (gated && !token) return null;
     const headers = gated ? { Accept: 'image/*', Authorization: `Bearer ${token}` } : { Accept: 'image/*' };
@@ -736,7 +742,7 @@ export function createServer({
     const markdown = result.data?.markdown;
     if (typeof markdown !== 'string' || markdown.trim() === '') return errorResult('Niblet API returned an invalid response.');
     const slug = field(result.data.slug ?? '', 160) ?? '';
-    const source = slug ? `Source: https://niblet.com/packs/${encodeURIComponent(slug)}` : null;
+    const source = slug ? `Source: https://niblet.pymodel.com/packs/${encodeURIComponent(slug)}` : null;
     const bounded = field(markdown, 39_998);
     const selected = selectDesignReferenceSections(bounded, input.sections);
     const warning = warningFor(`${selected.markdown}\n${slug}`);
@@ -807,7 +813,7 @@ export function createServer({
     }
     lines.push('', 'Reference documents (read as MCP resources):');
     for (const [slug, doc] of Object.entries(SKILL_DOCS)) lines.push(`  ${uriFor(slug)} — ${doc.title}`);
-    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons), get_design_reference (the recorded colors, typography, and components behind a web screen). All three need a niblet_at_ key as NIBLET_TOKEN, or connect the host to https://api.niblet.com/mcp with that key. Run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
+    lines.push('', 'Catalogue tools: find_ui_references (real full-screen references), find_ui_materials (license-recorded fonts and icons), get_design_reference (the recorded colors, typography, and components behind a web screen). All three need a niblet_at_ key as NIBLET_TOKEN, or connect the host to https://niblet-api.pymodel.com/mcp with that key. Run niblet_status to check. Reference retrieval is optional and never a prerequisite to useful work.');
     lines.push('With no target or command, present this menu and wait for a choice rather than making changes.');
     return textResult(lines.join('\n'));
   });
@@ -858,7 +864,7 @@ export function createServer({
       // Any HTTP status means the origin answered, which is what reachability asks.
       // A 404 still means the origin is up; counts come from a current /v1/stats.
       if (result.status === 404) {
-        lines.push('', 'API check:    reachable — the configured origin answered, but /v1/stats was not there. Tell the user: NIBLET_API_ORIGIN may point at the website or an old deployment, not https://api.niblet.com. To fix: unset NIBLET_API_ORIGIN for hosted, then restart this MCP server.');
+        lines.push('', 'API check:    reachable — the configured origin answered, but /v1/stats was not there. Tell the user: NIBLET_API_ORIGIN may point at the website or an old deployment, not https://niblet-api.pymodel.com. To fix: unset NIBLET_API_ORIGIN for hosted, then restart this MCP server.');
         return textResult(lines.join('\n'));
       }
       if (result.status !== undefined) {
