@@ -22,12 +22,11 @@ const DEFAULT_API_ORIGIN = 'https://niblet-api.pymodel.com';
 // legacy origin is the hosted service, not someone's own deployment.
 const HOSTED_API_HOSTS = new Set(['niblet-api.pymodel.com', 'api.niblet.com']);
 const WEBSITE_HOSTS = new Set(['niblet.pymodel.com', 'niblet.com', 'www.niblet.com']);
-const DEFAULT_MEDIA_ORIGIN = 'https://media.niblet.com';
+const DEFAULT_MEDIA_ORIGIN = 'https://niblet.pymodel.com';
 // Catalogue media behind the paywall: the site serves it under /media and answers only a
-// caller with access, so these origins under this path prefix get the API token and nothing else
-// does. www.niblet.com is today's MEDIA_BASE_URL; niblet.pymodel.com serves the same media and
-// becomes the base once this release is what installed clients run.
-const GATED_MEDIA_ORIGINS = new Set(['https://www.niblet.com', 'https://niblet.pymodel.com']);
+// caller with access, so this origin under this path prefix gets the API token and nothing else
+// does. niblet.com is being given up, so neither its site nor media.niblet.com is trusted.
+const GATED_MEDIA_ORIGINS = new Set(['https://niblet.pymodel.com']);
 const GATED_MEDIA_PREFIX = '/media/';
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
 const REQUEST_TIMEOUT = 15_000;

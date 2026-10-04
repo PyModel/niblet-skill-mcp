@@ -487,25 +487,26 @@ test('images are fetched only from allowed origins, unauthenticated, and never f
   }
 });
 
-test('gated site media gets the token, and only that origin and path does', async (t) => {
+test('by default nothing on niblet.com is fetched, and the key goes only to niblet.pymodel.com/media', async (t) => {
+  // niblet.com is being given up: neither its site /media path nor the old media host may
+  // receive the key or supply an image once the domain changes hands.
   const attempts = [];
-  const client = await connect(t, { token: TOKEN, fetch: async (url, options) => {
+  const client = await connect(t, { token: TOKEN, mediaOrigin: undefined, fetch: async (url, options) => {
     attempts.push({ href: url.href, auth: options?.headers?.Authorization });
     if (url.pathname === '/v1/search') {
       return Response.json({ results: [
         ref({ id: 'a', thumbUrl: 'https://www.niblet.com/media/thumb/a/1.webp' }),
-        ref({ id: 'b', thumbUrl: 'https://www.niblet.com/account/a.webp' }),
-        ref({ id: 'c', thumbUrl: `${MEDIA_ORIGIN}/thumb/c.webp` }),
+        ref({ id: 'b', thumbUrl: 'https://media.niblet.com/thumb/b/1.webp' }),
+        ref({ id: 'c', thumbUrl: 'https://niblet.pymodel.com/media/thumb/c/1.webp' }),
       ] });
     }
     return imageResponse();
   } });
   const result = await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings', limit: 3 } });
-  assert.equal(result.content.filter((item) => item.type === 'image').length, 2);
+  assert.equal(result.content.filter((item) => item.type === 'image').length, 1);
   assert.deepEqual(attempts.slice(1), [
-    { href: 'https://www.niblet.com/media/thumb/a/1.webp', auth: `Bearer ${TOKEN}` },
-    { href: `${MEDIA_ORIGIN}/thumb/c.webp`, auth: undefined },
-  ], 'a site path outside /media is never fetched, and the legacy media host never sees the token');
+    { href: 'https://niblet.pymodel.com/media/thumb/c/1.webp', auth: `Bearer ${TOKEN}` },
+  ]);
 });
 
 test('the pymodel.com site media path is gated media too, and its other paths are never fetched', async (t) => {
