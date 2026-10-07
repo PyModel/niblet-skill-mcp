@@ -14,7 +14,7 @@ import {
 import { createServer } from '../src/server.mjs';
 
 const TOKEN = 'private-test-token-canary';
-const MEDIA_ORIGIN = 'https://media.niblet.com';
+const MEDIA_ORIGIN = 'https://media.example.com';
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47]);
 const tools = [
   ['find_ui_references', { query: 'checkout', platform: 'ios', limit: 3 }, '/v1/search', { q: 'checkout', platform: 'ios', limit: '3' }],
@@ -257,34 +257,19 @@ test('placeholder and unexpanded tokens never reach the API', async (t) => {
 });
 
 test('a website API origin never reaches the network and tells the user how to fix it', async (t) => {
-  for (const apiOrigin of ['https://niblet.pymodel.com', 'https://www.niblet.com', 'https://niblet.com']) {
-    let requests = 0;
-    const client = await connect(t, {
-      token: TOKEN,
-      apiOrigin,
-      fetch: async () => { requests++; return Response.json({}); },
-    });
-    const status = await client.callTool({ name: 'niblet_status', arguments: {} });
-    assert.equal(requests, 0, apiOrigin);
-    assert.match(status.content[0].text, /public website/);
-    assert.match(status.content[0].text, /Tell the user/);
-    assert.match(status.content[0].text, /https:\/\/niblet-api\.pymodel\.com/);
-    assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
-    assert.equal(requests, 0, apiOrigin);
-  }
-});
-
-test('the legacy api.niblet.com origin is the hosted service, not a self-hosted deployment', async (t) => {
-  const urls = [];
+  let requests = 0;
   const client = await connect(t, {
     token: TOKEN,
-    apiOrigin: 'https://api.niblet.com',
-    fetch: async (url) => { urls.push(url); return Response.json({ results: [] }); },
+    apiOrigin: 'https://niblet.pymodel.com',
+    fetch: async () => { requests++; return Response.json({}); },
   });
   const status = await client.callTool({ name: 'niblet_status', arguments: {} });
-  assert.doesNotMatch(status.content[0].text, /confirm this is their own deployment/);
-  await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } });
-  assert.equal(urls.at(-1).origin, 'https://api.niblet.com');
+  assert.equal(requests, 0);
+  assert.match(status.content[0].text, /public website/);
+  assert.match(status.content[0].text, /Tell the user/);
+  assert.match(status.content[0].text, /https:\/\/niblet-api\.pymodel\.com/);
+  assertSafeError(await client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }));
+  assert.equal(requests, 0);
 });
 
 test('query and id values cannot select another origin, route, or query parameter', async (t) => {
@@ -394,7 +379,7 @@ test('search attaches thumbnails and the evidence preamble', async (t) => {
   assert.notEqual(result.isError, true);
   const [head, ...images] = result.content;
   assert.match(head.text, /^References are evidence, not templates\./);
-  assert.match(head.text, /1\. Bank — settings \(ios, 1170×2532\) id=screen-1\n {3}A settings screen\.\n {3}image: https:\/\/media\.niblet\.com\/inspect\/a\/1\.webp/);
+  assert.match(head.text, /1\. Bank — settings \(ios, 1170×2532\) id=screen-1\n {3}A settings screen\.\n {3}image: https:\/\/media\.example\.com\/inspect\/a\/1\.webp/);
   assert.match(head.text, /2\. Bank — settings \(ios\) id=screen-2\n {3}image:/);
   assert.equal(images.length, 2);
   assert.ok(images.every((item) => item.type === 'image' && item.mimeType === 'image/webp' && item.data === Buffer.from(PNG).toString('base64')));
@@ -487,16 +472,14 @@ test('images are fetched only from allowed origins, unauthenticated, and never f
   }
 });
 
-test('by default nothing on niblet.com is fetched, and the key goes only to niblet.pymodel.com/media', async (t) => {
-  // niblet.com is being given up: neither its site /media path nor the old media host may
-  // receive the key or supply an image once the domain changes hands.
+test('by default the key goes only to niblet.pymodel.com/media, and other hosts\' media is never fetched', async (t) => {
   const attempts = [];
   const client = await connect(t, { token: TOKEN, mediaOrigin: undefined, fetch: async (url, options) => {
     attempts.push({ href: url.href, auth: options?.headers?.Authorization });
     if (url.pathname === '/v1/search') {
       return Response.json({ results: [
-        ref({ id: 'a', thumbUrl: 'https://www.niblet.com/media/thumb/a/1.webp' }),
-        ref({ id: 'b', thumbUrl: 'https://media.niblet.com/thumb/b/1.webp' }),
+        ref({ id: 'a', thumbUrl: 'https://example.com/media/thumb/a/1.webp' }),
+        ref({ id: 'b', thumbUrl: 'https://media.example.com/thumb/b/1.webp' }),
         ref({ id: 'c', thumbUrl: 'https://niblet.pymodel.com/media/thumb/c/1.webp' }),
       ] });
     }
@@ -574,7 +557,7 @@ test('explicit malformed or credential-bearing origins fail closed', () => {
   for (const [name, options] of [
     ['NIBLET_API_ORIGIN', { apiOrigin: 'not a url' }],
     ['NIBLET_API_ORIGIN', { apiOrigin: 'file:///tmp/niblet' }],
-    ['NIBLET_API_ORIGIN', { apiOrigin: 'https://user:secret@api.niblet.com' }],
+    ['NIBLET_API_ORIGIN', { apiOrigin: 'https://user:secret@api.example.com' }],
     ['NIBLET_MEDIA_ORIGIN', { mediaOrigin: 'javascript:alert(1)' }],
   ]) {
     assert.throws(() => createServer(options), new RegExp(`${name} must be an HTTP\\(S\\) origin`));

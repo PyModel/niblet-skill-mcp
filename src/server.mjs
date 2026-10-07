@@ -18,14 +18,12 @@ import { SKILL_DOCS, parseCommands, parseModes, readSkillDoc, readSkillDocSync, 
 import pkg from '../package.json' with { type: 'json' };
 
 const DEFAULT_API_ORIGIN = 'https://niblet-api.pymodel.com';
-// The niblet.com API host keeps serving every path after the 2026-10-03 move, so a configured
-// legacy origin is the hosted service, not someone's own deployment.
-const HOSTED_API_HOSTS = new Set(['niblet-api.pymodel.com', 'api.niblet.com']);
-const WEBSITE_HOSTS = new Set(['niblet.pymodel.com', 'niblet.com', 'www.niblet.com']);
+const HOSTED_API_HOSTS = new Set(['niblet-api.pymodel.com']);
+const WEBSITE_HOSTS = new Set(['niblet.pymodel.com']);
 const DEFAULT_MEDIA_ORIGIN = 'https://niblet.pymodel.com';
 // Catalogue media behind the paywall: the site serves it under /media and answers only a
 // caller with access, so this origin under this path prefix gets the API token and nothing else
-// does. niblet.com is being given up, so neither its site nor media.niblet.com is trusted.
+// does.
 const GATED_MEDIA_ORIGINS = new Set(['https://niblet.pymodel.com']);
 const GATED_MEDIA_PREFIX = '/media/';
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
@@ -180,14 +178,6 @@ function wrongOriginMessage(apiOrigin) {
       `Niblet API origin is the public website (${host}), not the API.`,
       'Tell the user: this MCP is pointed at the Niblet website instead of niblet-api.pymodel.com.',
       'To fix: leave NIBLET_API_ORIGIN unset or set it to https://niblet-api.pymodel.com, then restart this MCP server.',
-      LOCAL_CONTINUE,
-    ].join(' ');
-  }
-  if (host === 'media.niblet.com') {
-    return [
-      'Niblet API origin is the media host, not the API.',
-      'Tell the user: NIBLET_API_ORIGIN is set to the media origin.',
-      'To fix: set NIBLET_API_ORIGIN to https://niblet-api.pymodel.com or unset it, then restart this MCP server.',
       LOCAL_CONTINUE,
     ].join(' ');
   }
