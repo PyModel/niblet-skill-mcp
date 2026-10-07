@@ -1,6 +1,6 @@
 {
   "name": "@pymodel/niblet",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Niblet MCP server and design skill: real UI screen references for coding agents",
   "keywords": [
     "mcp",
@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
-    "@pymodel/niblet-contract": "0.1.7",
+    "@pymodel/niblet-contract": "0.1.8",
     "zod": "4.6.5"
   }
 }
