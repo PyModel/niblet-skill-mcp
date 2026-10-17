@@ -3,8 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import {
   FindUiMaterialsOutputSchema,
   FindUiReferencesOutputSchema,
@@ -60,7 +59,7 @@ const SAFE_ERRORS = [
   /^NIBLET_TOKEN is /,
   /^Niblet API (authentication failed|access denied|rate limit|is unavailable|request failed|redirects|returned|could not be reached|request timed out|request was cancelled|response exceeded|origin )/,
   /^The requested Niblet resource was not found/,
-  /^(MCP error|Invalid arguments|Tool .* not found)/,
+  /^(MCP error|Input validation error|Invalid arguments|Tool .* not found)/,
 ];
 
 function assertSafeError(result) {
@@ -751,7 +750,7 @@ test('cancelling during a backoff wait stops the retry', async (t) => {
       abort.abort();
     }),
   });
-  await assert.rejects(client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS }, undefined, { signal: abort.signal }));
+  await assert.rejects(client.callTool({ name: 'find_ui_materials', arguments: FONT_ARGS }, { signal: abort.signal }));
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(calls, 1);
 });
@@ -803,7 +802,7 @@ test('MCP cancellation aborts an in-flight fetch', { timeout: 5_000 }, async (t)
     }, { once: true }));
   } });
   const controller = new AbortController();
-  const call = client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }, undefined, { signal: controller.signal });
+  const call = client.callTool({ name: 'find_ui_references', arguments: { query: 'settings' } }, { signal: controller.signal });
   const rejected = assert.rejects(call);
   const signal = await started.promise;
   controller.abort();
@@ -961,7 +960,7 @@ test('cancellation during an image fetch does not fabricate a successful result'
     return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));
   } });
   const controller = new AbortController();
-  const call = client.callTool({ name: 'find_ui_references', arguments: { query: 'settings', limit: 1 } }, undefined, { signal: controller.signal });
+  const call = client.callTool({ name: 'find_ui_references', arguments: { query: 'settings', limit: 1 } }, { signal: controller.signal });
   const rejected = assert.rejects(call);
   await new Promise((resolve) => setImmediate(resolve));
   controller.abort();

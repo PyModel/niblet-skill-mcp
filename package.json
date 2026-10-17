@@ -47,8 +47,11 @@
     "verify:package": "npm pack --dry-run --json > pack.json && node scripts/verify-package.mjs pack.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "@pymodel/niblet-contract": "0.1.8",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1"
   }
 }

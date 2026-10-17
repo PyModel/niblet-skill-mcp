@@ -1,5 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { McpServer, ProtocolError, ProtocolErrorCode } from '@modelcontextprotocol/server';
 import {
   CatalogueMaterialSchema,
   CatalogueReferenceSchema,
@@ -562,14 +561,14 @@ export function createServer({
     inputSchema: FindUiReferencesInputSchema,
     outputSchema: FindUiReferencesOutputSchema,
     annotations,
-  }, async (input, extra) => {
+  }, async (input, ctx) => {
     const connected = connectionError();
     if (connected) return errorResult(connected);
 
     if (input.selectedIds?.length) {
       // Missing ids are omitted, and the remaining screens are numbered contiguously, as the catalogue does.
       const results = await Promise.all(input.selectedIds.map((id) => (
-        requestJson(['screens', id], { clientSkillVersion: input.clientSkillVersion }, extra.signal)
+        requestJson(['screens', id], { clientSkillVersion: input.clientSkillVersion }, ctx.mcpReq.signal)
       )));
       const found = [];
       for (const result of results) {
@@ -594,7 +593,7 @@ export function createServer({
       const structuredContent = { references, selected: true };
       const rendered = found.map(refText);
       const warning = warningFor(rendered.join('\n'));
-      const images = await Promise.all(found.map((ref) => fetchImage(ref.inspectUrl, extra.signal)));
+      const images = await Promise.all(found.map((ref) => fetchImage(ref.inspectUrl, ctx.mcpReq.signal)));
       const content = [{ type: 'text', text: [REFERENCE_PREAMBLE, warning].filter(Boolean).join('\n') }];
       for (const [index, text] of rendered.entries()) {
         content.push({ type: 'text', text: warnedText(text) });
@@ -608,7 +607,7 @@ export function createServer({
       platform: input.platform,
       limit: input.limit,
       clientSkillVersion: input.clientSkillVersion,
-    }, extra.signal);
+    }, ctx.mcpReq.signal);
     if (!result.ok) return errorResult(result.message);
     const all = listOf(result.data, 'results');
     if (all === null) return errorResult('Niblet API returned an invalid response.');
@@ -633,7 +632,7 @@ export function createServer({
     const rendered = refs.map(refText);
     const warning = warningFor(rendered.join('\n'));
     const content = [{ type: 'text', text: [REFERENCE_PREAMBLE, warning, '', ...rendered, ...pointer].filter((value) => value !== null).join('\n') }];
-    const images = await Promise.all(refs.map((ref) => fetchImage(ref.thumbUrl, extra.signal)));
+    const images = await Promise.all(refs.map((ref) => fetchImage(ref.thumbUrl, ctx.mcpReq.signal)));
     for (const [index] of refs.entries()) {
       // Keep one block per reference so position still identifies which screen an image belongs to.
       content.push(images[index] ?? { type: 'text', text: `(image ${index + 1} could not be retrieved)` });
@@ -647,7 +646,7 @@ export function createServer({
     inputSchema: FindUiMaterialsInputSchema,
     outputSchema: FindUiMaterialsOutputSchema,
     annotations,
-  }, async (input, extra) => {
+  }, async (input, ctx) => {
     if (input.kind === 'pack') {
       return textResult(
         'Packs are not available on this server. Continue with the local design system.',
@@ -662,7 +661,7 @@ export function createServer({
       kind: input.kind,
       limit: input.limit,
       clientSkillVersion: input.clientSkillVersion,
-    }, extra.signal);
+    }, ctx.mcpReq.signal);
     if (!result.ok) return errorResult(result.message);
     const all = listOf(result.data, 'materials');
     if (all === null) return errorResult('Niblet API returned an invalid response.');
@@ -694,7 +693,7 @@ export function createServer({
       mimeType: 'text/markdown',
     }, async (uri) => {
       const text = await readSkillDoc(slug);
-      if (text === null) throw new McpError(ErrorCode.InternalError, 'The bundled Niblet skill could not be read. Reinstall the package.');
+      if (text === null) throw new ProtocolError(ProtocolErrorCode.InternalError, 'The bundled Niblet skill could not be read. Reinstall the package.');
       return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
     });
   }
@@ -707,7 +706,7 @@ export function createServer({
     inputSchema: GetDesignReferenceInputSchema,
     outputSchema: GetDesignReferenceOutputSchema,
     annotations,
-  }, async (input, extra) => {
+  }, async (input, ctx) => {
     const connected = connectionError();
     if (connected) return errorResult(connected);
 
@@ -716,7 +715,7 @@ export function createServer({
       slug: input.packSlug,
       sections: input.sections?.join(','),
       clientSkillVersion: input.clientSkillVersion,
-    }, extra.signal);
+    }, ctx.mcpReq.signal);
     if (!result.ok) {
       if (result.status === 404) {
         return textResult(
@@ -815,7 +814,7 @@ export function createServer({
     }).strict(),
     // The probe is the reported result, so this one does reach the configured origin.
     annotations,
-  }, async (input, extra) => {
+  }, async (input, ctx) => {
     const lines = ['Niblet MCP status.', '', `API origin:   ${API_ORIGIN}`, `Media origins: ${[...MEDIA_ORIGINS].join(', ')}`];
 
     // Presence and shape only — the playbook's doctor entry requires never displaying it.
@@ -848,7 +847,7 @@ export function createServer({
       return textResult(lines.join('\n'));
     }
 
-    const result = await requestJson(['stats'], {}, extra.signal);
+    const result = await requestJson(['stats'], {}, ctx.mcpReq.signal);
     if (!result.ok) {
       // Any HTTP status means the origin answered, which is what reachability asks.
       // A 404 still means the origin is up; counts come from a current /v1/stats.
